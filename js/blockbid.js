@@ -55,7 +55,7 @@ module.exports = class blockbid extends Exchange {
                         'tickers',
                         'ohlc',
                         'orderbook',
-                        'trade',
+                        'trades',
                     ],
                 },
                 'private': {
@@ -217,6 +217,43 @@ module.exports = class blockbid extends Exchange {
         return this.parseOrderBook (preParseBook, undefined, 'bids', 'asks', 0, 1);
     }
 
+    parseTrade (trade, market = undefined) {
+        let symbol = undefined;
+        if (market)
+            symbol = market['symbol'];
+        let datetime = trade['timestamp'];
+        let timestamp = ( new Date (datetime) ).getTime ()
+        let price = this.safeFloat (trade, 'price');
+        let amount = this.safeFloat (trade, 'volume');
+        let cost = price * amount;
+        let side = (trade['side'] === 'bid') ? 'sell' : 'buy';
+        return {
+            'info': trade,
+            'timestamp': timestamp,
+            'datetime': datetime,
+            'symbol': symbol,
+            'id': trade['tradeID'],
+            'order': undefined,
+            'type': undefined,
+            'side': side,
+            'price': price,
+            'amount': amount,
+            'cost': cost,
+            'fee': undefined,
+        };
+    }
+
+    async fetchTrades (symbol, since = undefined, limit = 50, params = {}) {
+        await this.loadMarkets ();
+        let market = this.market (symbol);
+        let response = await this.publicGetTrades (this.extend ({
+            'market': market['id'],
+            'limit': limit, // default 20, but that seems too little
+        }, params));
+        return this.parseTrades (response, market, since, limit);
+    }
+
+
     sign (path, api = 'public', method = 'GET', params = {}, headers = undefined, body = undefined) {
         let url = this.urls['api'] + '/' + this.implodeParams (path, params);
         let query = this.omit (params, this.extractParams (path));
@@ -263,8 +300,6 @@ module.exports = class blockbid extends Exchange {
     //     }
     //     throw new ExchangeError (feedback);
     // }
-
-
 
     nonce () {
         return this.milliseconds ();
