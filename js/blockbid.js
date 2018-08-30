@@ -192,6 +192,31 @@ module.exports = class blockbid extends Exchange {
         return this.indexBy (result, 'symbol');
     }
 
+    async fetchOrderBook (symbol, limit = undefined, params = {}) {
+        await this.loadMarkets ();
+        let request = {
+            'market': this.marketId (symbol),
+        };
+        if (typeof limit !== 'undefined')
+            request['limit'] = limit; // 100
+        let response = await this.publicGetOrderbook (this.extend (request, params));
+
+        let preParseBook = {};
+        let arrBids = [];
+        let arrAsks = [];
+
+        for (let i = 0; i < response.bids.length; i++) {
+          arrBids.push([response.bids[i].price, response.bids[i].volume, []])
+        }
+        for (let i = 0; i < response.asks.length; i++) {
+          arrAsks.push([response.asks[i].price, response.asks[i].volume, []])
+        }
+        preParseBook['bids'] = arrBids;
+        preParseBook['asks'] = arrAsks;
+
+        return this.parseOrderBook (preParseBook, undefined, 'bids', 'asks', 0, 1);
+    }
+
     sign (path, api = 'public', method = 'GET', params = {}, headers = undefined, body = undefined) {
         let url = this.urls['api'] + '/' + this.implodeParams (path, params);
         let query = this.omit (params, this.extractParams (path));
@@ -238,6 +263,8 @@ module.exports = class blockbid extends Exchange {
     //     }
     //     throw new ExchangeError (feedback);
     // }
+
+
 
     nonce () {
         return this.milliseconds ();
