@@ -60,24 +60,24 @@ module.exports = class blockbid extends Exchange {
                 },
                 'private': {
                     'get': [
-                        'identity',
-                        'accounts',
-                        'accounts/{account_id}',
-                        'addresses',
-                        'deposits',
-                        'deposits/{id}',
-                        'trades/my',
-                        'orders',
-                        'orders/{id}',
-                        'withdraws',
+                        'identity', // Not implemented yet
+                        'accounts', // Not implemented yet
+                        'accounts/{account_id}', // Not implemented yet
+                        'addresses', // Not implemented yet
+                        'deposits', // Not implemented yet
+                        'deposits/{id}', // Not implemented yet
+                        'trades/my', // Not implemented yet
+                        'orders', // Not implemented yet
+                        'orders/{id}', // Not implemented yet
+                        'withdraws', // Not implemented yet
                     ],
                     'post': [
-                        'orders',
-                        'withdraws',
+                        'orders', // Not implemented yet
+                        'withdraws', // Not implemented yet
                     ],
                     'delete': [
-                        'orders',
-                        'orders/{id}',
+                        'orders', // Not implemented yet
+                        'orders/{id}', // Not implemented yet
                     ],
                 },
             },
@@ -290,15 +290,41 @@ module.exports = class blockbid extends Exchange {
         return this.parseOHLCVs (response, market, timeframe, since, limit);
     }
 
+    async fetchBalance (params = {}) {
+        await this.loadMarkets ();
+        let response = await this.privateGetAccounts (params);
+        console.log(response);
+        let result = { 'info': response };
+        let balances = response['result']['balances'];
+        for (let i = 0; i < balances.length; i++) {
+            let balance = balances[i];
+            let currency = balance['currency'];
+            if (currency in this.currencies_by_id)
+                currency = this.currencies_by_id[currency]['code'];
+            let account = {
+                'used': parseFloat (balance['on_order']),
+                'total': parseFloat (balance['total']),
+            };
+            account['free'] = parseFloat (account['total'] - account['used']);
+            result[currency] = account;
+        }
+        return this.parseBalance (result);
+    }
+
     sign (path, api = 'public', method = 'GET', params = {}, headers = undefined, body = undefined) {
         let url = this.urls['api'] + '/' + this.implodeParams (path, params);
         let query = this.omit (params, this.extractParams (path));
         headers = {};
         if (api === 'private') {
+
+            let rawSignature = this.stringToBase64(this.apiKey) + this.stringToBase64(this.nonce());
             this.checkRequiredCredentials ();
-            // headers['device_id'] = this.apiKey;
-            headers['nonce'] = this.nonce ().toString ();
-            headers['Authorization'] = this.apiKey;
+
+            const signature = this.hmac(rawSignature, this.secret, 'sha384', 'base64');
+
+            headers['X-Blockbid-Signature'] = signature;
+            headers['X-Blockbid-Nonce'] = 'nonce';
+            headers['X-Blockbid-Api-Key'] = this.apiKey;
         }
         if (method === 'GET') {
             query = this.urlencode (query);
