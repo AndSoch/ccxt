@@ -97,9 +97,99 @@ module.exports = class blockbid extends Exchange {
     }
 
     async fetchMarkets () {
-        console.log('hiiii')
-        let response = await this.publicGetMarkets ();
-        return response;
+        let markets = await this.publicGetMarkets ();
+        let result = [];
+        for (let i = 0; i < markets.length; i++) {
+          let market = markets[i];
+          let id = market['id'];
+          let name = market['name'];
+          let [ baseId, quoteId ] = name.split ('/');
+          let base = this.commonCurrencyCode (baseId);
+          let quote = this.commonCurrencyCode (quoteId);
+          let symbol = base + '/' + quote;
+          let precision = undefined;
+          let active = this.safeValue (market, 'is_active', true);
+
+          result.push ({
+              'id': id,
+              'symbol': symbol,
+              'base': base,
+              'quote': quote,
+              'baseId': baseId.toLowerCase (),
+              'quoteId': quoteId.toLowerCase (),
+              'active': active,
+              'precision': precision,
+              'limits': {
+                  'amount': {
+                      'min': this.safeFloat (market, 'base_min_size'),
+                      'max': this.safeFloat (market, 'base_max_size'),
+                  },
+                  'price': {
+                      'min': undefined,
+                      'max': undefined,
+                  },
+                  'cost': {
+                      'min': undefined,
+                      'max': undefined,
+                  },
+              },
+              'info': market,
+          });
+        }
+        return result
+    }
+
+    parseTicker (ticker, market = undefined) {
+        let symbol = undefined;
+        if (typeof market === 'undefined') {
+            let marketId = this.safeString (ticker, 'market');
+            if (marketId in this.markets_by_id) {
+                market = this.markets_by_id[marketId];
+            } else {
+                let [ baseId, quoteId ] = marketId.split ('-');
+                let base = this.commonCurrencyCode (baseId);
+                let quote = this.commonCurrencyCode (quoteId);
+                symbol = base + '/' + quote;
+            }
+        }
+        if (typeof market !== 'undefined')
+            symbol = market['symbol'];
+        let datetime = this.safeString (ticker, 'timestamp');
+        let timestamp = ( new Date (datetime) ).getTime ()
+        let last = this.safeFloat (ticker, 'last');
+        return {
+            'symbol': symbol,
+            'timestamp': timestamp,
+            'datetime': datetime,
+            'high': this.safeFloat (ticker, '24h_high'),
+            'low': this.safeFloat (ticker, '24h_low'),
+            'bid': this.safeFloat (ticker, 'highest_bid'),
+            'bidVolume': undefined,
+            'ask': this.safeFloat (ticker, 'lowest_ask'),
+            'askVolume': undefined,
+            'vwap': undefined,
+            'open': undefined,
+            'close': last,
+            'last': last,
+            'previousClose': undefined,
+            'change': this.safeFloat (ticker, 'percentChanged24hr'),
+            'percentage': undefined,
+            'average': undefined,
+            'baseVolume': this.safeFloat (ticker, '24h_volume'),
+            'quoteVolume': this.safeFloat (ticker, 'quote_volume'),
+            'info': ticker,
+        };
+    }
+
+    async fetchTickers (symbols = undefined, params = {}) {
+        await this.loadMarkets ();
+        let tickers = await this.publicGetTickers (params);
+        // let tickers = response['result']['tickers'];
+        let result = [];
+        for (let i = 0; i < tickers.length; i++) {
+            result.push (this.parseTicker (tickers[i]));
+        }
+        return this.indexBy (result, 'symbol');
     }
 
     sign (path, api = 'public', method = 'GET', params = {}, headers = undefined, body = undefined) {
