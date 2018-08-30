@@ -30,18 +30,18 @@ module.exports = class blockbid extends Exchange {
                 'withdraw': true,
             },
             'timeframes': {
-                '1m': '1m',
-                '5m': '5m',
-                '15m': '15m',
-                '30m': '30m',
-                '1h': '1h',
-                '2h': '2h',
-                '4h': '4h',
-                '6h': '6h',
-                '12h': '12h',
-                '1d': '1d',
-                '3d': '3d',
-                '1w': '1w',
+                '1m': 1,
+                '5m': 5,
+                '15m': 15,
+                '30m': 30,
+                '1h': 60,
+                '2h': 120,
+                '4h': 240,
+                '6h': 360,
+                '12h': 720,
+                '1d': 1440,
+                '3d': 4280,
+                '1w': 10080,
             },
             'urls': {
                 'api': 'https://api.devblockbid.io',
@@ -253,6 +253,42 @@ module.exports = class blockbid extends Exchange {
         return this.parseTrades (response, market, since, limit);
     }
 
+    parseOHLCV (ohlcv, market = undefined, timeframe = '5m', since = undefined, limit = undefined) {
+        let datetime = (new Date (ohlcv['timestamp'])).getTime();
+        return [
+            datetime,
+            parseFloat (ohlcv['open']),
+            parseFloat (ohlcv['high']),
+            parseFloat (ohlcv['low']),
+            parseFloat (ohlcv['close']),
+            parseFloat (ohlcv['volume']),
+        ];
+    }
+
+    async fetchOHLCV (symbol, timeframe = '1m', since = undefined, limit = undefined, params = {}) {
+        await this.loadMarkets ();
+        let market = this.market (symbol);
+        //
+        // they say in their docs that end_time defaults to current server time
+        // but if you don't specify it, their range limits does not allow you to query anything
+        //
+        // they also say that start_time defaults to 0,
+        // but most calls fail if you do not specify any of end_time
+        //
+        // to make things worse, their docs say it should be a Unix Timestamp
+        // but with seconds it fails, so we set milliseconds (somehow it works that way)
+        //
+        let endTime = this.milliseconds ();
+        let request = {
+            'market': market['id'],
+            'period': this.timeframes[timeframe],
+        };
+        if (typeof since !== 'undefined')
+            request['timestamp'] = since;
+        let response = await this.publicGetOhlc (this.extend (request, params));
+        // let ohlcv = response;//['result']['candles'];
+        return this.parseOHLCVs (response, market, timeframe, since, limit);
+    }
 
     sign (path, api = 'public', method = 'GET', params = {}, headers = undefined, body = undefined) {
         let url = this.urls['api'] + '/' + this.implodeParams (path, params);
