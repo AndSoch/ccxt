@@ -329,8 +329,9 @@ module.exports = class blockbid extends Exchange {
     let query = this.omit(params, this.extractParams(path));
     headers = {};
     if (api === 'private') {
+      let nonce = String(this.nonce())
       let rawSignature =
-        this.stringToBase64(this.apiKey) + this.stringToBase64('nonce');
+        this.stringToBase64(this.apiKey) + this.stringToBase64(nonce);
       this.checkRequiredCredentials();
 
       const signature = this.hmac(
@@ -341,7 +342,7 @@ module.exports = class blockbid extends Exchange {
       );
 
       headers['X-Blockbid-Signature'] = signature;
-      headers['X-Blockbid-Nonce'] = 'nonce';
+      headers['X-Blockbid-Nonce'] = nonce;
       headers['X-Blockbid-Api-Key'] = this.apiKey;
     }
     if (method === 'GET') {
