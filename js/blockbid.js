@@ -446,7 +446,17 @@ module.exports = class blockbid extends Exchange {
       return orders;
   }
 
-
+  async fetchMyTrades (symbol = undefined, since = undefined, limit = undefined, params = {}) {
+      await this.loadMarkets ();
+      let market = this.market (symbol);
+      let request = {
+        market: market['id'],
+        limit
+      };
+      let response = await this.privateGetTradesMy (this.extend (request, params));
+      // console.log(response);
+      return this.parseTrades (response, market, since, limit);
+  }
 
   sign(
     path,
