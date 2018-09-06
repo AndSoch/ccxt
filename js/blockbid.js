@@ -404,13 +404,22 @@ module.exports = class blockbid extends Exchange {
       };
   }
 
+  async fetchOrder (id, symbol = undefined, params = {}) {
+      await this.loadMarkets ();
+      let response = await this.privateGetOrdersId (this.extend ({
+          'id': id.toString (),
+      }, params));
+      return this.parseOrder (response);
+  }
+
   async fetchOpenOrders (symbol = undefined, since = undefined, limit = undefined, params = {}) {
       await this.loadMarkets ();
       let request = {
         market: symbol,
+        limit,
       }
       let result = await this.privateGetOrders (this.extend(request, params));
-      console.log(result);
+      // console.log(result);
       let orders = this.parseOrders (result, undefined, since, limit);
       return orders;
   }
