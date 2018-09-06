@@ -411,6 +411,15 @@ module.exports = class blockbid extends Exchange {
       return order;
   }
 
+  async cancelOrder (id, params = {}) {
+      let response = await this.privateDeleteOrdersId (this.extend ({
+          'id': id,
+      }, params));
+      return this.parseOrder (this.extend (response, {
+          'id': id,
+      }));
+  }
+
   async fetchOrder (id, symbol = undefined, params = {}) {
       await this.loadMarkets ();
       let response = await this.privateGetOrdersId (this.extend ({
