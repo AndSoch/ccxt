@@ -336,22 +336,6 @@ module.exports = class blockbid extends Exchange {
   }
 
   parseOrder (order, market = undefined) {
-      //
-      //     {
-      //         'completed_at': None,
-      //         'eq_price': '0',
-      //         'filled': '0',
-      //         'id': '88426800-beae-4407-b4a1-f65cef693542',
-      //         'price': '0.00000507',
-      //         'side': 'bid',
-      //         'size': '3503.6489',
-      //         'source': 'exchange',
-      //         'state': 'open',
-      //         'timestamp': 1535258403597,
-      //         'trading_pair_id': 'ACT-BTC',
-      //         'type': 'limit',
-      //     }
-      //
       let symbol = undefined;
       if (typeof market === 'undefined') {
           let marketId = this.safeString2 (order, 'market');
@@ -404,6 +388,29 @@ module.exports = class blockbid extends Exchange {
       };
   }
 
+  async createOrder (symbol, type, side, amount, price = undefined, params = {}) {
+      await this.loadMarkets ();
+      let market = this.market (symbol);
+      let request = {
+          'market': market['id'],
+          'orders': [
+            {
+              'side': side,
+              'volume': amount,
+              'ord_type': type, // market, limit, stop, stop_limit
+          }
+        ]
+      };
+      if (type !== 'market') {
+          request['orders'][0]['price'] = price;
+      }
+      let response = await this.privatePostOrders (this.extend (request, params));
+      let order = this.parseOrder (response[0], market);
+      let id = order['id'];
+      this.orders[id] = order;
+      return order;
+  }
+
   async fetchOrder (id, symbol = undefined, params = {}) {
       await this.loadMarkets ();
       let response = await this.privateGetOrdersId (this.extend ({
@@ -419,10 +426,11 @@ module.exports = class blockbid extends Exchange {
         limit,
       }
       let result = await this.privateGetOrders (this.extend(request, params));
-      // console.log(result);
       let orders = this.parseOrders (result, undefined, since, limit);
       return orders;
   }
+
+
 
   sign(
     path,
