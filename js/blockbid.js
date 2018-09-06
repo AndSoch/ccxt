@@ -317,6 +317,104 @@ module.exports = class blockbid extends Exchange {
     return this.parseBalance(result);
   }
 
+  parseOrderStatus (status) {
+      let statuses = {
+          'filled': 'closed',
+          'rejected': 'closed',
+          'partially_filled': 'open',
+          'pending_cancellation': 'open',
+          'pending_modification': 'open',
+          'open': 'open',
+          'new': 'open',
+          'queued': 'open',
+          'cancelled': 'canceled',
+          'triggered': 'triggered',
+      };
+      if (status in statuses)
+          return statuses[status];
+      return status;
+  }
+
+  parseOrder (order, market = undefined) {
+      //
+      //     {
+      //         'completed_at': None,
+      //         'eq_price': '0',
+      //         'filled': '0',
+      //         'id': '88426800-beae-4407-b4a1-f65cef693542',
+      //         'price': '0.00000507',
+      //         'side': 'bid',
+      //         'size': '3503.6489',
+      //         'source': 'exchange',
+      //         'state': 'open',
+      //         'timestamp': 1535258403597,
+      //         'trading_pair_id': 'ACT-BTC',
+      //         'type': 'limit',
+      //     }
+      //
+      let symbol = undefined;
+      if (typeof market === 'undefined') {
+          let marketId = this.safeString2 (order, 'market');
+          market = this.safeValue (this.markets_by_id, marketId);
+      }
+      if (typeof market !== 'undefined')
+          symbol = market['symbol'];
+      let datetime = this.safeString (order, 'timestamp');
+      let price = this.safeFloat (order, 'price');
+      let average = this.safeFloat (order, 'avgPrice');
+      let amount = this.safeFloat (order, 'volume');
+      let filled = this.safeFloat (order, 'executedVolume');
+      let remaining = this.safeFloat (order, 'remainingVolume');
+      let cost = undefined;
+      if (typeof filled !== 'undefined' && typeof average !== 'undefined') {
+          cost = average * filled;
+      } else if (typeof average !== 'undefined') {
+          cost = average * amount;
+      }
+      if (typeof amount !== 'undefined') {
+          if (typeof filled !== 'undefined') {
+              remaining = amount - filled;
+          }
+      }
+      let status = this.parseOrderStatus (this.safeString (order, 'state'));
+      let side = this.safeString (order, 'side');
+      if (side === 'bid') {
+          side = 'buy';
+      } else if (side === 'ask') {
+          side = 'sell';
+      }
+      return {
+          'id': this.safeString (order, 'ordID'),
+          'datetime': datetime,
+          'timestamp': (new Date(datetime)).getTime(),
+          'lastTradeTimestamp': undefined,
+          'status': status,
+          'symbol': symbol,
+          'type': this.safeString (order, 'ordType'), // market, limit, stop, stop_limit, trailing_stop, fill_or_kill
+          'side': side,
+          'price': price,
+          'cost': cost,
+          'average': average,
+          'amount': amount,
+          'filled': filled,
+          'remaining': remaining,
+          'trades': this.safeString( order, 'tradesCount'),
+          'fee': undefined,
+          'info': order,
+      };
+  }
+
+  async fetchOpenOrders (symbol = undefined, since = undefined, limit = undefined, params = {}) {
+      await this.loadMarkets ();
+      let request = {
+        market: symbol,
+      }
+      let result = await this.privateGetOrders (this.extend(request, params));
+      console.log(result);
+      let orders = this.parseOrders (result, undefined, since, limit);
+      return orders;
+  }
+
   sign(
     path,
     api = 'public',
@@ -354,6 +452,7 @@ module.exports = class blockbid extends Exchange {
     }
     return { url: url, method: method, body: body, headers: headers };
   }
+
 
   // handleErrors (code, reason, url, method, headers, body) {
   //     if (code < 400 || code >= 600) {
