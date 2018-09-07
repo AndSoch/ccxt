@@ -3,7 +3,8 @@
 //  ---------------------------------------------------------------------------
 
 const Exchange = require('./base/Exchange');
-const { AuthenticationError } = require('./base/errors');
+const { ExchangeError, InsufficientFunds, InvalidNonce, InvalidOrder, PermissionDenied } = require ('./base/errors');
+
 
 //  ---------------------------------------------------------------------------
 
@@ -485,9 +486,9 @@ module.exports = class blockbid extends Exchange {
   //     await this.loadMarkets ();
   //     // if (typeof code === 'undefined') {
   //     //     throw new ExchangeError (this.id + ' fetchDeposits() requires a currency code arguemnt');
-  //     // }
   //     let request = {};
   //     if (code) {
+  //     // }
   //       let currency = this.currency (code);
   //       request['currency'] = currency['id'];
   //     }
@@ -498,9 +499,10 @@ module.exports = class blockbid extends Exchange {
   async fetchWithdrawals (code = undefined, since = undefined, limit = undefined, params = {}) {
       await this.loadMarkets ();
       if (typeof code === 'undefined') {
-          throw new ExchangeError (this.id + ' fetchWithdrawals() requires a currency code arguemnt');
+          throw new ExchangeError (this.id + ' fetchWithdrawals() requires a currency code argument');
       }
       let currency = this.currency (code);
+      console.log(currency);
       let request = {
           'currency': currency['id'],
       };
@@ -535,13 +537,13 @@ module.exports = class blockbid extends Exchange {
           if (currencyId in this.currencies_by_id) {
               currency = this.currencies_by_id[currencyId];
           } else {
-              code = this.commonCurrencyCode (currencyId);
           }
+          code = this.commonCurrencyCode (currencyId);
       }
       if (typeof currency !== 'undefined') {
           code = currency['code'];
       }
-      let type = this.safeString (transaction, 'currencyType');
+
       return {
           'info': transaction,
           'id': this.safeString (transaction, 'withdrawID'),
@@ -549,7 +551,7 @@ module.exports = class blockbid extends Exchange {
           'timestamp': timestamp,
           'datetime': datetime,
           'address': this.safeString (transaction, 'address'), // or is it defined?
-          'type': type, // direction of the transaction, ('deposit' | 'withdraw')
+          'type': undefined, // direction of the transaction, ('deposit' | 'withdraw')
           'amount': this.safeFloat (transaction, 'amount'),
           'currency': code,
           'status': this.parseTransactionStatus (transaction['state']),
@@ -598,33 +600,6 @@ module.exports = class blockbid extends Exchange {
     }
     return { url: url, method: method, body: body, headers: headers };
   }
-
-
-  // handleErrors (code, reason, url, method, headers, body) {
-  //     if (code < 400 || code >= 600) {
-  //         return;
-  //     }
-  //     if (body[0] !== '{') {
-  //         throw new ExchangeError (this.id + ' ' + body);
-  //     }
-  //     let response = JSON.parse (body);
-  //     const feedback = this.id + ' ' + this.json (response);
-  //     let errorCode = this.safeValue (response['error'], 'error_code');
-  //     if (method === 'DELETE' || method === 'GET') {
-  //         if (errorCode === 'parameter_error') {
-  //             if (url.indexOf ('trading/orders/') >= 0) {
-  //                 // Cobinhood returns vague "parameter_error" on fetchOrder() and cancelOrder() calls
-  //                 // for invalid order IDs as well as orders that are not "open"
-  //                 throw new InvalidOrder (feedback);
-  //             }
-  //         }
-  //     }
-  //     const exceptions = this.exceptions;
-  //     if (errorCode in exceptions) {
-  //         throw new exceptions[errorCode] (feedback);
-  //     }
-  //     throw new ExchangeError (feedback);
-  // }
 
   nonce() {
     return this.milliseconds();
