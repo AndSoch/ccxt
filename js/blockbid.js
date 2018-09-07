@@ -502,7 +502,6 @@ module.exports = class blockbid extends Exchange {
           throw new ExchangeError (this.id + ' fetchWithdrawals() requires a currency code argument');
       }
       let currency = this.currency (code);
-      console.log(currency);
       let request = {
           'currency': currency['id'],
       };
