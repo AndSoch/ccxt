@@ -458,6 +458,109 @@ module.exports = class blockbid extends Exchange {
       return this.parseTrades (response, market, since, limit);
   }
 
+// Leave for now as scopes do not permit
+  // async fetchDepositAddress (code, params = {}) {
+  //     await this.loadMarkets ();
+  //     let currency = this.currency (code);
+  //     console.log(currency);
+  //     let response = await this.privateGetAddresses (this.extend ({
+  //         'currency': currency['id'],
+  //     }, params));
+  //     console.log(response);
+  //     let addresses = this.safeValue (response['result'], 'deposit_addresses', []);
+  //     let address = undefined;
+  //     if (addresses.length > 0) {
+  //         address = this.safeString (addresses[0], 'address');
+  //     }
+  //     this.checkAddress (address);
+  //     return {
+  //         'currency': code,
+  //         'address': address,
+  //         'info': response,
+  //     };
+  // }
+  //
+  // // also not available
+  // async fetchDeposits (code = undefined, since = undefined, limit = undefined, params = {}) {
+  //     await this.loadMarkets ();
+  //     // if (typeof code === 'undefined') {
+  //     //     throw new ExchangeError (this.id + ' fetchDeposits() requires a currency code arguemnt');
+  //     // }
+  //     let request = {};
+  //     if (code) {
+  //       let currency = this.currency (code);
+  //       request['currency'] = currency['id'];
+  //     }
+  //     let response = await this.privateGetDeposits (this.extend (request, params));
+  //     return this.parseTransactions (response['result']['deposits'], currency);
+  // }
+
+  async fetchWithdrawals (code = undefined, since = undefined, limit = undefined, params = {}) {
+      await this.loadMarkets ();
+      if (typeof code === 'undefined') {
+          throw new ExchangeError (this.id + ' fetchWithdrawals() requires a currency code arguemnt');
+      }
+      let currency = this.currency (code);
+      let request = {
+          'currency': currency['id'],
+      };
+      let response = await this.privateGetWithdraws (this.extend (request, params));
+      return this.parseTransactions (response, currency);
+  }
+
+  parseTransactionStatus (status) {
+      let statuses = {
+          'tx_pending_two_factor_auth': 'pending',
+          'tx_pending_email_auth': 'pending',
+          'tx_pending_approval': 'pending',
+          'tx_approved': 'pending',
+          'tx_processing': 'pending',
+          'tx_pending': 'pending',
+          'tx_sent': 'pending',
+          'tx_cancelled': 'canceled',
+          'tx_timeout': 'error',
+          'tx_invalid': 'error',
+          'tx_rejected': 'error',
+          'tx_confirmed': 'ok',
+      };
+      return (status in statuses) ? statuses[status] : status.toLowerCase ();
+  }
+
+  parseTransaction (transaction, currency = undefined) {
+      let datetime = this.safeString (transaction, 'timeCreated');
+      let timestamp = (new Date(datetime)).getTime();
+      let code = undefined;
+      if (typeof currency === 'undefined') {
+          let currencyId = this.safeString (transaction, 'currency');
+          if (currencyId in this.currencies_by_id) {
+              currency = this.currencies_by_id[currencyId];
+          } else {
+              code = this.commonCurrencyCode (currencyId);
+          }
+      }
+      if (typeof currency !== 'undefined') {
+          code = currency['code'];
+      }
+      let type = this.safeString (transaction, 'currencyType');
+      return {
+          'info': transaction,
+          'id': this.safeString (transaction, 'withdrawID'),
+          'txid': this.safeString (transaction, 'txid'),
+          'timestamp': timestamp,
+          'datetime': datetime,
+          'address': this.safeString (transaction, 'address'), // or is it defined?
+          'type': type, // direction of the transaction, ('deposit' | 'withdraw')
+          'amount': this.safeFloat (transaction, 'amount'),
+          'currency': code,
+          'status': this.parseTransactionStatus (transaction['state']),
+          'updated': this.safeString (transaction, 'timeUpdated'),
+          'fee': {
+              'cost': this.safeFloat (transaction, 'fee'),
+              'rate': undefined,
+          },
+      };
+  }
+
   sign(
     path,
     api = 'public',
