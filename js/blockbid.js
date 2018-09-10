@@ -3,8 +3,13 @@
 //  ---------------------------------------------------------------------------
 
 const Exchange = require('./base/Exchange');
-const { ExchangeError, InsufficientFunds, InvalidNonce, InvalidOrder, PermissionDenied } = require ('./base/errors');
-
+const {
+  ExchangeError,
+  InsufficientFunds,
+  InvalidNonce,
+  InvalidOrder,
+  PermissionDenied
+} = require('./base/errors');
 
 //  ---------------------------------------------------------------------------
 
@@ -214,7 +219,7 @@ module.exports = class blockbid extends Exchange {
   parseTrade(trade, market = undefined) {
     let symbol = undefined;
     if (market) symbol = market['symbol'];
-    let datetime = trade['timestamp'];
+    let datetime = trade['createdAt'];
     let timestamp = new Date(datetime).getTime();
     let price = this.safeFloat(trade, 'price');
     let amount = this.safeFloat(trade, 'volume');
@@ -310,156 +315,188 @@ module.exports = class blockbid extends Exchange {
         currency = this.currencies_by_id[currency]['code'];
       let account = {
         free: parseFloat(balance['balance']),
-        used: parseFloat(balance['locked']),
+        used: parseFloat(balance['locked'])
       };
-      account['total'] = parseFloat(account['free'] + account['used'])
+      account['total'] = parseFloat(account['free'] + account['used']);
       result[currency] = account;
     }
     return this.parseBalance(result);
   }
 
-  parseOrderStatus (status) {
-      let statuses = {
-          'filled': 'closed',
-          'rejected': 'closed',
-          'partially_filled': 'open',
-          'pending_cancellation': 'open',
-          'pending_modification': 'open',
-          'open': 'open',
-          'new': 'open',
-          'queued': 'open',
-          'cancelled': 'canceled',
-          'triggered': 'triggered',
-      };
-      if (status in statuses)
-          return statuses[status];
-      return status;
+  parseOrderStatus(status) {
+    let statuses = {
+      filled: 'closed',
+      rejected: 'closed',
+      partially_filled: 'open',
+      pending_cancellation: 'open',
+      pending_modification: 'open',
+      open: 'open',
+      new: 'open',
+      queued: 'open',
+      cancelled: 'canceled',
+      triggered: 'triggered'
+    };
+    if (status in statuses) return statuses[status];
+    return status;
   }
 
-  parseOrder (order, market = undefined) {
-      let symbol = undefined;
-      if (typeof market === 'undefined') {
-          let marketId = this.safeString2 (order, 'market');
-          market = this.safeValue (this.markets_by_id, marketId);
+  parseOrder(order, market = undefined) {
+    let symbol = undefined;
+    if (typeof market === 'undefined') {
+      let marketId = this.safeString2(order, 'market');
+      market = this.safeValue(this.markets_by_id, marketId);
+    }
+    if (typeof market !== 'undefined') symbol = market['symbol'];
+    let datetime = this.safeString(order, 'timestamp');
+    let price = this.safeFloat(order, 'price');
+    let average = this.safeFloat(order, 'avgPrice');
+    let amount = this.safeFloat(order, 'volume');
+    let filled = this.safeFloat(order, 'executedVolume');
+    let remaining = this.safeFloat(order, 'remainingVolume');
+    let cost = undefined;
+    if (typeof filled !== 'undefined' && typeof average !== 'undefined') {
+      cost = average * filled;
+    } else if (typeof average !== 'undefined') {
+      cost = average * amount;
+    }
+    if (typeof amount !== 'undefined') {
+      if (typeof filled !== 'undefined') {
+        remaining = amount - filled;
       }
-      if (typeof market !== 'undefined')
-          symbol = market['symbol'];
-      let datetime = this.safeString (order, 'timestamp');
-      let price = this.safeFloat (order, 'price');
-      let average = this.safeFloat (order, 'avgPrice');
-      let amount = this.safeFloat (order, 'volume');
-      let filled = this.safeFloat (order, 'executedVolume');
-      let remaining = this.safeFloat (order, 'remainingVolume');
-      let cost = undefined;
-      if (typeof filled !== 'undefined' && typeof average !== 'undefined') {
-          cost = average * filled;
-      } else if (typeof average !== 'undefined') {
-          cost = average * amount;
-      }
-      if (typeof amount !== 'undefined') {
-          if (typeof filled !== 'undefined') {
-              remaining = amount - filled;
-          }
-      }
-      let status = this.parseOrderStatus (this.safeString (order, 'state'));
-      let side = this.safeString (order, 'side');
-      if (side === 'bid') {
-          side = 'buy';
-      } else if (side === 'ask') {
-          side = 'sell';
-      }
-      return {
-          'id': this.safeString (order, 'ordID'),
-          'datetime': datetime,
-          'timestamp': (new Date(datetime)).getTime(),
-          'lastTradeTimestamp': undefined,
-          'status': status,
-          'symbol': symbol,
-          'type': this.safeString (order, 'ordType'), // market, limit, stop, stop_limit, trailing_stop, fill_or_kill
-          'side': side,
-          'price': price,
-          'cost': cost,
-          'average': average,
-          'amount': amount,
-          'filled': filled,
-          'remaining': remaining,
-          'trades': this.safeString( order, 'tradesCount'),
-          'fee': undefined,
-          'info': order,
-      };
+    }
+    let status = this.parseOrderStatus(this.safeString(order, 'state'));
+    let side = this.safeString(order, 'side');
+    if (side === 'bid') {
+      side = 'buy';
+    } else if (side === 'ask') {
+      side = 'sell';
+    }
+    return {
+      id: this.safeString(order, 'ordID'),
+      datetime: datetime,
+      timestamp: new Date(datetime).getTime(),
+      lastTradeTimestamp: undefined,
+      status: status,
+      symbol: symbol,
+      type: this.safeString(order, 'ordType'), // market, limit, stop, stop_limit, trailing_stop, fill_or_kill
+      side: side,
+      price: price,
+      cost: cost,
+      average: average,
+      amount: amount,
+      filled: filled,
+      remaining: remaining,
+      trades: this.safeString(order, 'tradesCount'),
+      fee: undefined,
+      info: order
+    };
   }
 
-  async createOrder (symbol, type, side, amount, price = undefined, params = {}) {
-      await this.loadMarkets ();
-      let market = this.market (symbol);
-      let request = {
-          'market': market['id'],
-          'orders': [
-            {
-              'side': side,
-              'volume': amount,
-              'ord_type': type, // market, limit, stop, stop_limit
-          }
-        ]
-      };
-      if (type !== 'market') {
-          request['orders'][0]['price'] = price;
-      }
-      let response = await this.privatePostOrders (this.extend (request, params));
-      let order = this.parseOrder (response[0], market);
-      let id = order['id'];
-      this.orders[id] = order;
-      return order;
+  async createOrder(
+    symbol,
+    type,
+    side,
+    amount,
+    price = undefined,
+    params = {}
+  ) {
+    await this.loadMarkets();
+    let market = this.market(symbol);
+    let request = {
+      market: market['id'],
+      orders: [
+        {
+          side: side,
+          volume: amount,
+          ord_type: type // market, limit, stop, stop_limit
+        }
+      ]
+    };
+    if (type !== 'market') {
+      request['orders'][0]['price'] = price;
+    }
+    let response = await this.privatePostOrders(this.extend(request, params));
+    let order = this.parseOrder(response[0], market);
+    let id = order['id'];
+    this.orders[id] = order;
+    return order;
   }
 
-  async cancelOrder (id, params = {}) {
-      let response = await this.privateDeleteOrdersId (this.extend ({
-          'id': id,
-      }, params));
-      return this.parseOrder (this.extend (response, {
-          'id': id,
-      }));
+  async cancelOrder(id, params = {}) {
+    let response = await this.privateDeleteOrdersId(
+      this.extend(
+        {
+          id: id
+        },
+        params
+      )
+    );
+    return this.parseOrder(
+      this.extend(response, {
+        id: id
+      })
+    );
   }
 
-  async cancelOrders (side, params = {}) {
-      let response = await this.privateDeleteOrders (this.extend ({
-          'side': side,
-      }, params));
-      return this.parseOrders (response);
+  async cancelOrders(side, params = {}) {
+    let response = await this.privateDeleteOrders(
+      this.extend(
+        {
+          side: side
+        },
+        params
+      )
+    );
+    return this.parseOrders(response);
   }
 
-  async fetchOrder (id, symbol = undefined, params = {}) {
-      await this.loadMarkets ();
-      let response = await this.privateGetOrdersId (this.extend ({
-          'id': id.toString (),
-      }, params));
-      return this.parseOrder (response);
+  async fetchOrder(id, symbol = undefined, params = {}) {
+    await this.loadMarkets();
+    let response = await this.privateGetOrdersId(
+      this.extend(
+        {
+          id: id.toString()
+        },
+        params
+      )
+    );
+    return this.parseOrder(response);
   }
 
-  async fetchOpenOrders (symbol = undefined, since = undefined, limit = undefined, params = {}) {
-      await this.loadMarkets ();
-      let request = {
-        market: symbol,
-        limit,
-      }
-      let result = await this.privateGetOrders (this.extend(request, params));
-      let orders = this.parseOrders (result, undefined, since, limit);
-      return orders;
+  async fetchOpenOrders(
+    symbol = undefined,
+    since = undefined,
+    limit = undefined,
+    params = {}
+  ) {
+    await this.loadMarkets();
+    let request = {
+      market: symbol,
+      limit
+    };
+    let result = await this.privateGetOrders(this.extend(request, params));
+    let orders = this.parseOrders(result, undefined, since, limit);
+    return orders;
   }
 
-  async fetchMyTrades (symbol = undefined, since = undefined, limit = undefined, params = {}) {
-      await this.loadMarkets ();
-      let market = this.market (symbol);
-      let request = {
-        market: market['id'],
-        limit
-      };
-      let response = await this.privateGetTradesMy (this.extend (request, params));
-      // console.log(response);
-      return this.parseTrades (response, market, since, limit);
+  async fetchMyTrades(
+    symbol = undefined,
+    since = undefined,
+    limit = undefined,
+    params = {}
+  ) {
+    await this.loadMarkets();
+    let market = this.market(symbol);
+    let request = {
+      market: market['id'],
+      limit
+    };
+    let response = await this.privateGetTradesMy(this.extend(request, params));
+    // console.log(response);
+    return this.parseTrades(response, market, since, limit);
   }
 
-// Leave for now as scopes do not permit
+  // Leave for now as scopes do not permit
   // async fetchDepositAddress (code, params = {}) {
   //     await this.loadMarkets ();
   //     let currency = this.currency (code);
@@ -496,70 +533,77 @@ module.exports = class blockbid extends Exchange {
   //     return this.parseTransactions (response['result']['deposits'], currency);
   // }
 
-  async fetchWithdrawals (code = undefined, since = undefined, limit = undefined, params = {}) {
-      await this.loadMarkets ();
-      if (typeof code === 'undefined') {
-          throw new ExchangeError (this.id + ' fetchWithdrawals() requires a currency code argument');
-      }
-      let currency = this.currency (code);
-      let request = {
-          'currency': currency['id'],
-      };
-      let response = await this.privateGetWithdraws (this.extend (request, params));
-      return this.parseTransactions (response, currency);
+  async fetchWithdrawals(
+    code = undefined,
+    since = undefined,
+    limit = undefined,
+    params = {}
+  ) {
+    await this.loadMarkets();
+    if (typeof code === 'undefined') {
+      throw new ExchangeError(
+        this.id + ' fetchWithdrawals() requires a currency code argument'
+      );
+    }
+    let currency = this.currency(code);
+    let request = {
+      currency: currency['id']
+    };
+    let response = await this.privateGetWithdraws(this.extend(request, params));
+    return this.parseTransactions(response, currency);
   }
 
-  parseTransactionStatus (status) {
-      let statuses = {
-          'tx_pending_two_factor_auth': 'pending',
-          'tx_pending_email_auth': 'pending',
-          'tx_pending_approval': 'pending',
-          'tx_approved': 'pending',
-          'tx_processing': 'pending',
-          'tx_pending': 'pending',
-          'tx_sent': 'pending',
-          'tx_cancelled': 'canceled',
-          'tx_timeout': 'error',
-          'tx_invalid': 'error',
-          'tx_rejected': 'error',
-          'tx_confirmed': 'ok',
-      };
-      return (status in statuses) ? statuses[status] : status.toLowerCase ();
+  parseTransactionStatus(status) {
+    let statuses = {
+      tx_pending_two_factor_auth: 'pending',
+      tx_pending_email_auth: 'pending',
+      tx_pending_approval: 'pending',
+      tx_approved: 'pending',
+      tx_processing: 'pending',
+      tx_pending: 'pending',
+      tx_sent: 'pending',
+      tx_cancelled: 'canceled',
+      tx_timeout: 'error',
+      tx_invalid: 'error',
+      tx_rejected: 'error',
+      tx_confirmed: 'ok'
+    };
+    return status in statuses ? statuses[status] : status.toLowerCase();
   }
 
-  parseTransaction (transaction, currency = undefined) {
-      let datetime = this.safeString (transaction, 'timeCreated');
-      let timestamp = (new Date(datetime)).getTime();
-      let code = undefined;
-      if (typeof currency === 'undefined') {
-          let currencyId = this.safeString (transaction, 'currency');
-          if (currencyId in this.currencies_by_id) {
-              currency = this.currencies_by_id[currencyId];
-          } else {
-          }
-          code = this.commonCurrencyCode (currencyId);
+  parseTransaction(transaction, currency = undefined) {
+    let datetime = this.safeString(transaction, 'timeCreated');
+    let timestamp = new Date(datetime).getTime();
+    let code = undefined;
+    if (typeof currency === 'undefined') {
+      let currencyId = this.safeString(transaction, 'currency');
+      if (currencyId in this.currencies_by_id) {
+        currency = this.currencies_by_id[currencyId];
+      } else {
       }
-      if (typeof currency !== 'undefined') {
-          code = currency['code'];
-      }
+      code = this.commonCurrencyCode(currencyId);
+    }
+    if (typeof currency !== 'undefined') {
+      code = currency['code'];
+    }
 
-      return {
-          'info': transaction,
-          'id': this.safeString (transaction, 'withdrawID'),
-          'txid': this.safeString (transaction, 'txid'),
-          'timestamp': timestamp,
-          'datetime': datetime,
-          'address': this.safeString (transaction, 'address'), // or is it defined?
-          'type': undefined, // direction of the transaction, ('deposit' | 'withdraw')
-          'amount': this.safeFloat (transaction, 'amount'),
-          'currency': code,
-          'status': this.parseTransactionStatus (transaction['state']),
-          'updated': this.safeString (transaction, 'timeUpdated'),
-          'fee': {
-              'cost': this.safeFloat (transaction, 'fee'),
-              'rate': undefined,
-          },
-      };
+    return {
+      info: transaction,
+      id: this.safeString(transaction, 'withdrawID'),
+      txid: this.safeString(transaction, 'txid'),
+      timestamp: timestamp,
+      datetime: datetime,
+      address: this.safeString(transaction, 'address'), // or is it defined?
+      type: undefined, // direction of the transaction, ('deposit' | 'withdraw')
+      amount: this.safeFloat(transaction, 'amount'),
+      currency: code,
+      status: this.parseTransactionStatus(transaction['state']),
+      updated: this.safeString(transaction, 'timeUpdated'),
+      fee: {
+        cost: this.safeFloat(transaction, 'fee'),
+        rate: undefined
+      }
+    };
   }
 
   sign(
@@ -574,7 +618,7 @@ module.exports = class blockbid extends Exchange {
     let query = this.omit(params, this.extractParams(path));
     headers = {};
     if (api === 'private') {
-      let nonce = String(this.nonce())
+      let nonce = String(this.nonce());
       let rawSignature =
         this.stringToBase64(this.apiKey) + this.stringToBase64(nonce);
       this.checkRequiredCredentials();
