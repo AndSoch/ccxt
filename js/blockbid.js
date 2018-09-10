@@ -61,25 +61,19 @@ module.exports = class blockbid extends Exchange {
         },
         private: {
           get: [
-            'identity', // Not implemented yet
-            'accounts', // Not implemented yet
-            'accounts/{account_id}', // Not implemented yet
-            'addresses', // Not implemented yet
-            'deposits', // Not implemented yet
-            'deposits/{id}', // Not implemented yet
-            'trades/my', // Not implemented yet
-            'orders', // Not implemented yet
-            'orders/{id}', // Not implemented yet
-            'withdraws' // Not implemented yet
+            'identity',
+            'balances',
+            'balances/{currency}',
+            'addresses',
+            'deposits',
+            'deposits/{id}',
+            'trades/my',
+            'orders',
+            'orders/{id}',
+            'withdraws'
           ],
-          post: [
-            'orders', // Not implemented yet
-            'withdraws' // Not implemented yet
-          ],
-          delete: [
-            'orders', // Not implemented yet
-            'orders/{id}' // Not implemented yet
-          ]
+          post: ['orders', 'withdraws'],
+          delete: ['orders', 'orders/{id}']
         }
       },
       fees: {
@@ -306,7 +300,7 @@ module.exports = class blockbid extends Exchange {
 
   async fetchBalance(params = {}) {
     await this.loadMarkets();
-    let response = await this.privateGetAccounts(params);
+    let response = await this.privateGetBalances(params);
     let result = { info: response };
     for (let i = 0; i < response.length; i++) {
       let balance = response[i];
@@ -314,10 +308,10 @@ module.exports = class blockbid extends Exchange {
       if (currency in this.currencies_by_id)
         currency = this.currencies_by_id[currency]['code'];
       let account = {
-        free: parseFloat(balance['balance']),
-        used: parseFloat(balance['locked'])
+        free: balance['available'],
+        used: balance['locked'],
+        total: balance['total']
       };
-      account['total'] = parseFloat(account['free'] + account['used']);
       result[currency] = account;
     }
     return this.parseBalance(result);
@@ -347,9 +341,9 @@ module.exports = class blockbid extends Exchange {
       market = this.safeValue(this.markets_by_id, marketId);
     }
     if (typeof market !== 'undefined') symbol = market['symbol'];
-    let datetime = this.safeString(order, 'timestamp');
+    let datetime = this.safeString(order, 'createdAt');
     let price = this.safeFloat(order, 'price');
-    let average = this.safeFloat(order, 'avgPrice');
+    let average = this.safeFloat(order, 'averagePrice');
     let amount = this.safeFloat(order, 'volume');
     let filled = this.safeFloat(order, 'executedVolume');
     let remaining = this.safeFloat(order, 'remainingVolume');
@@ -372,13 +366,13 @@ module.exports = class blockbid extends Exchange {
       side = 'sell';
     }
     return {
-      id: this.safeString(order, 'ordID'),
+      id: this.safeString(order, 'id'),
       datetime: datetime,
       timestamp: new Date(datetime).getTime(),
       lastTradeTimestamp: undefined,
       status: status,
       symbol: symbol,
-      type: this.safeString(order, 'ordType'), // market, limit, stop, stop_limit, trailing_stop, fill_or_kill
+      type: this.safeString(order, 'orderType'), // market, limit, stop, stop_limit, trailing_stop, fill_or_kill
       side: side,
       price: price,
       cost: cost,
@@ -492,7 +486,7 @@ module.exports = class blockbid extends Exchange {
       limit
     };
     let response = await this.privateGetTradesMy(this.extend(request, params));
-    // console.log(response);
+    console.log(response);
     return this.parseTrades(response, market, since, limit);
   }
 
