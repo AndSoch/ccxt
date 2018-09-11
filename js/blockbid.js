@@ -177,6 +177,17 @@ module.exports = class blockbid extends Exchange {
     };
   }
 
+  async fetchTicker(symbol = undefined, params = {}) {
+    await this.loadMarkets();
+    let tickers = await this.publicGetTickers(params);
+    const marketId = this.marketId(symbol);
+    let result = [];
+    for (let i = 0; i < tickers.length; i++) {
+      const ticker = tickers[i];
+      if (ticker.market === marketId) return this.parseTicker(ticker);
+    }
+  }
+
   async fetchTickers(symbols = undefined, params = {}) {
     await this.loadMarkets();
     let tickers = await this.publicGetTickers(params);
@@ -193,7 +204,12 @@ module.exports = class blockbid extends Exchange {
     let request = {
       market: this.marketId(symbol)
     };
-    if (typeof limit !== 'undefined') request['limit'] = limit; // 100
+
+    if (typeof limit !== 'undefined') {
+      request['asks_limit'] = limit;
+      request['bids_limit'] = limit;
+    }
+
     let response = await this.publicGetOrderbook(this.extend(request, params));
 
     let preParseBook = {};
