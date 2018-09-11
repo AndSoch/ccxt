@@ -6,8 +6,6 @@ const Exchange = require('./base/Exchange');
 const {
   ExchangeError,
   InsufficientFunds,
-  InvalidNonce,
-  InvalidOrder,
   PermissionDenied
 } = require('./base/errors');
 
@@ -318,7 +316,16 @@ module.exports = class blockbid extends Exchange {
 
   async fetchBalance(params = {}) {
     await this.loadMarkets();
+    if (!this.apiKey || !this.secret) {
+      throw new PermissionDenied(this.id + ' fetchBalance() requires you to have a valid api key and secret.');
+    }
     let response = await this.privateGetBalances(params);
+    // console.log(response.error);
+    // console.log(response.message);
+    if (response.error || response.message) {
+      throw new PermissionDenied(this.id + ' fetchBalance() requires a valid api key');
+    }
+
     let result = { info: response };
     for (let i = 0; i < response.length; i++) {
       let balance = response[i];
@@ -412,6 +419,9 @@ module.exports = class blockbid extends Exchange {
     price = undefined,
     params = {}
   ) {
+    if (!this.apiKey || !this.secret) {
+      throw new PermissionDenied(this.id + ' createOrder() requires you to have a valid api key and secret.');
+    }
     await this.loadMarkets();
     let market = this.market(symbol);
     let request = {
@@ -428,6 +438,10 @@ module.exports = class blockbid extends Exchange {
       request['orders'][0]['price'] = price;
     }
     let response = await this.privatePostOrders(this.extend(request, params));
+    if (response.error || response.message) {
+      throw new PermissionDenied(this.id + ' createOrder() requires a valid api key');
+    }
+
     let order = this.parseOrder(response[0], market);
     let id = order['id'];
     this.orders[id] = order;
@@ -435,6 +449,9 @@ module.exports = class blockbid extends Exchange {
   }
 
   async cancelOrder(id, params = {}) {
+    if (!this.apiKey || !this.secret) {
+      throw new PermissionDenied(this.id + ' cancelOrder() requires you to have a valid api key and secret.');
+    }
     let response = await this.privateDeleteOrdersId(
       this.extend(
         {
@@ -443,6 +460,9 @@ module.exports = class blockbid extends Exchange {
         params
       )
     );
+    if (response.error || response.message) {
+      throw new PermissionDenied(this.id + ' cancelOrder() requires a valid api key');
+    }
     return this.parseOrder(
       this.extend(response, {
         id: id
@@ -451,6 +471,9 @@ module.exports = class blockbid extends Exchange {
   }
 
   async cancelOrders(side, params = {}) {
+    if (!this.apiKey || !this.secret) {
+      throw new PermissionDenied(this.id + ' cancelOrders() requires you to have a valid api key and secret.');
+    }
     let response = await this.privateDeleteOrders(
       this.extend(
         {
@@ -459,10 +482,16 @@ module.exports = class blockbid extends Exchange {
         params
       )
     );
+    if (response.error || response.message) {
+      throw new PermissionDenied(this.id + ' cancelOrders() requires a valid api key');
+    }
     return this.parseOrders(response);
   }
 
   async fetchOrder(id, symbol = undefined, params = {}) {
+    if (!this.apiKey || !this.secret) {
+      throw new PermissionDenied(this.id + ' fetchOrder() requires you to have a valid api key and secret.');
+    }
     await this.loadMarkets();
     let response = await this.privateGetOrdersId(
       this.extend(
@@ -472,6 +501,9 @@ module.exports = class blockbid extends Exchange {
         params
       )
     );
+    if (response.error || response.message) {
+      throw new PermissionDenied(this.id + ' fetchOrder() requires a valid api key');
+    }
     return this.parseOrder(response);
   }
 
@@ -481,6 +513,9 @@ module.exports = class blockbid extends Exchange {
     limit = undefined,
     params = {}
   ) {
+    if (!this.apiKey || !this.secret) {
+      throw new PermissionDenied(this.id + ' fetchOpenOrders() requires you to have a valid api key and secret.');
+    }
     await this.loadMarkets();
     let market = this.market(symbol);
     let request = {
@@ -488,6 +523,10 @@ module.exports = class blockbid extends Exchange {
       limit
     };
     let result = await this.privateGetOrders(this.extend(request, params));
+    if (result.error || result.message) {
+      throw new PermissionDenied(this.id + ' fetchOpenOrders() requires a valid api key');
+    }
+
     let orders = this.parseOrders(result, undefined, since, limit);
     return orders;
   }
@@ -498,6 +537,9 @@ module.exports = class blockbid extends Exchange {
     limit = undefined,
     params = {}
   ) {
+    if (!this.apiKey || !this.secret) {
+      throw new PermissionDenied(this.id + ' fetchMyTrades() requires you to have a valid api key and secret.');
+    }
     await this.loadMarkets();
     let market = this.market(symbol);
     let request = {
@@ -505,6 +547,9 @@ module.exports = class blockbid extends Exchange {
       limit
     };
     let response = await this.privateGetTradesMy(this.extend(request, params));
+    if (response.error || response.message) {
+      throw new PermissionDenied(this.id + ' fetchMyTrades() requires a valid api key');
+    }
     return this.parseTrades(response, market, since, limit);
   }
 
@@ -551,6 +596,9 @@ module.exports = class blockbid extends Exchange {
     limit = undefined,
     params = {}
   ) {
+    if (!this.apiKey || !this.secret) {
+      throw new PermissionDenied(this.id + ' fetchWithdrawals() requires you to have a valid api key and secret.');
+    }
     await this.loadMarkets();
     if (typeof code === 'undefined') {
       throw new ExchangeError(
@@ -572,6 +620,9 @@ module.exports = class blockbid extends Exchange {
       let response = await this.privateGetWithdrawsCrypto(
         this.extend(request, params)
       );
+    }
+    if (response.error || response.message) {
+      throw new PermissionDenied(this.id + ' fetchwithdrawals() requires a valid api key');
     }
     return this.parseTransactions(response, currency);
   }
