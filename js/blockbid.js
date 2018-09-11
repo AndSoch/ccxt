@@ -70,9 +70,10 @@ module.exports = class blockbid extends Exchange {
             'trades/my',
             'orders',
             'orders/{id}',
-            'withdraws'
+            'withdraws/fiat',
+            'withdraws/crypto'
           ],
-          post: ['orders', 'withdraws'],
+          post: ['orders', 'withdraws/fiat', 'withdraw/crypto'],
           delete: ['orders', 'orders/{id}']
         }
       },
@@ -87,7 +88,8 @@ module.exports = class blockbid extends Exchange {
       precision: {
         amount: 8,
         price: 8
-      }
+      },
+      supportedFiat: ['AUD', 'USD', 'EUR', 'JPY']
     });
   }
 
@@ -464,8 +466,9 @@ module.exports = class blockbid extends Exchange {
     params = {}
   ) {
     await this.loadMarkets();
+    let market = this.market(symbol);
     let request = {
-      market: symbol,
+      market: market['id'],
       limit
     };
     let result = await this.privateGetOrders(this.extend(request, params));
@@ -486,7 +489,6 @@ module.exports = class blockbid extends Exchange {
       limit
     };
     let response = await this.privateGetTradesMy(this.extend(request, params));
-    console.log(response);
     return this.parseTrades(response, market, since, limit);
   }
 
@@ -543,7 +545,18 @@ module.exports = class blockbid extends Exchange {
     let request = {
       currency: currency['id']
     };
-    let response = await this.privateGetWithdraws(this.extend(request, params));
+    const currencyCode = currency['code'];
+    let response;
+
+    if (this.supportedFiat.indexOf(currencyCode) !== -1) {
+      let response = await this.privateGetWithdrawsFiat(
+        this.extend(request, params)
+      );
+    } else {
+      let response = await this.privateGetWithdrawsCrypto(
+        this.extend(request, params)
+      );
+    }
     return this.parseTransactions(response, currency);
   }
 
