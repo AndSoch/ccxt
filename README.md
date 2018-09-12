@@ -1,3 +1,130 @@
+# Notes for Blockbid Implementation
+
+The following function calls have been integrated:
+
+Public routes:
+ - fetchMarkets()
+ - fetchTicker()
+ - fetchTickers()
+ - fetchOrderBook()
+ - fetchTrades()
+
+Private routes:
+ - fetchBalance()
+ - fetchMyTrades()
+ - fetchOpenOrders()
+ - createOrder() (Single Order)
+ - cancelOrder() (Single Order)
+ - cancelOrders() (All Orders or a side)
+ - fetchWithdrawals()
+
+Notes on each route:
+ccxt has a generic format it wants all its responses to take. There are properties missing from our exchanges, which most likely have varying degrees of importance and effort to implement. I will point them out here:
+
+
+ - fetchMarkets()
+    response example with comments:
+```
+    symbol: 'BTC/AUD',
+    base: 'BTC',
+    quote: 'AUD',
+    baseId: 'btc',
+    quoteId: 'aud',
+    active: true,
+    precision: undefined, `<<<--- we havent specified a precision for our markets.`
+    limits: { amount: [Object], price: [Object], cost: [Object] }, <<<--- we havent specified any limits or restrictions on amounts or price that people can wager? can someone place an order of 0.00000001 BTC at a price of 0.000000000000000001 ?
+    info: { id: 'btcaud', name: 'BTC/AUD' } }, <<<--- Info is the information we provide in our request.
+```
+
+ - fetchTicker()
+    given the fact we do not have an individual tickers route yet, fetchTicker is calling our /tickers route and filtering the result.
+
+
+    response example with comments:
+
+      symbol: 'BTC/USD',
+      timestamp: 1536713431000,
+      datetime: '2018-09-12T00:50:31.000Z',
+      high: undefined,
+      low: undefined,
+      bid: undefined,
+      bidVolume: undefined,
+      ask: undefined,
+      askVolume: undefined,
+      vwap: undefined,
+      open: undefined,
+      close: 12312313,
+      last: 12312313,
+      previousClose: undefined,
+      change: undefined,
+      percentage: undefined,
+      average: undefined,
+      baseVolume: undefined,
+      quoteVolume: undefined,
+      info:
+       { timestamp: '2018-09-12T00:50:31.000Z',
+         market: 'btcusd',
+         last: 12312313 }
+
+         As you can see from this example, theres alot of data pieces missing that we could / should probably implement. I think we filtered out several fields when building the tickers route, perhaps we should reimplement them?
+
+ - fetchTickers()
+
+    same as above just an array of all the tickers. Same empty fields apply.
+
+ - fetchOrderBook()
+
+     { bids:
+        [ [ 6335.05859999, 3157034.41249744 ],
+        [ 6335.05859999, 3157034.57801972 ],
+        [ 6318.4752, 3165320.49594241 ],
+        [ 11, 0.00013642 ] ],
+       asks:
+        [ [ 6347.74139999, 0.16564078 ],
+        [ 6347.74139999, 0.16561595 ],
+        [ 6350.04369999, 0.16560353 ],
+        [ 12312313, 0.00000164 ] ],
+      timestamp: undefined,
+      datetime: undefined,
+      nonce: undefined }
+
+      We should attach a timestamp / 'createdAt' to our orderbook before sending it to the user.
+
+  - fetchTrades()
+
+      { info:
+          { id: 328939,
+           price: 12312313,
+           volume: 5e-8,
+           funds: 0.6937700769989,
+           market: 'btcusd',
+           createdAt: '2018-09-12T00:44:15.000Z',
+           side: 'notApplicable' },
+          timestamp: 1536713055000,
+          datetime: '2018-09-12T00:44:15.000Z',
+          symbol: 'BTC/USD',
+          id: 328939,
+          order: undefined,
+          type: undefined,
+          side: 'notApplicable',
+          price: 12312313,
+          amount: 5e-8,
+          cost: 0.61561565,
+          fee: undefined
+      }
+
+      Alot of data is there, still need to fix issues with side.
+
+  - fetchOHLCV()
+
+    example period:
+    [ 1535932800000, 7078.88724893, 12312313, 5000, 10000, 1.3162 ],
+
+    No comments other than ccxt parse it and reverse it back to an array form.
+
+  -
+
+
 # CCXT – CryptoCurrency eXchange Trading Library
 
 [![Build Status](https://travis-ci.org/ccxt/ccxt.svg?branch=master)](https://travis-ci.org/ccxt/ccxt) [![npm](https://img.shields.io/npm/v/ccxt.svg)](https://npmjs.com/package/ccxt) [![PyPI](https://img.shields.io/pypi/v/ccxt.svg)](https://pypi.python.org/pypi/ccxt) [![NPM Downloads](https://img.shields.io/npm/dm/ccxt.svg)](https://www.npmjs.com/package/ccxt) [![Gitter](https://badges.gitter.im/ccxt-dev/ccxt.svg)](https://gitter.im/ccxt-dev/ccxt?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge) [![Supported Exchanges](https://img.shields.io/badge/exchanges-131-blue.svg)](https://github.com/ccxt/ccxt/wiki/Exchange-Markets) [![Open Collective](https://opencollective.com/ccxt/backers/badge.svg)](https://opencollective.com/ccxt)

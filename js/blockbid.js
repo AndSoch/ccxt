@@ -93,6 +93,10 @@ module.exports = class blockbid extends Exchange {
 
   async fetchMarkets() {
     let markets = await this.publicGetMarkets();
+
+    let err = this.handleError(markets);
+    if (err) throw new ExchangeError(this.id + ' has thrown an error: ' + JSON.stringify(err));
+
     let result = [];
     for (let i = 0; i < markets.length; i++) {
       let market = markets[i];
@@ -178,6 +182,10 @@ module.exports = class blockbid extends Exchange {
   async fetchTicker(symbol = undefined, params = {}) {
     await this.loadMarkets();
     let tickers = await this.publicGetTickers(params);
+
+    let err = this.handleError(tickers);
+    if (err) throw new ExchangeError(this.id + ' has thrown an error: ' + JSON.stringify(err));
+
     const marketId = this.marketId(symbol);
     let result = [];
     for (let i = 0; i < tickers.length; i++) {
@@ -210,6 +218,9 @@ module.exports = class blockbid extends Exchange {
 
     let response = await this.publicGetOrderbook(this.extend(request, params));
 
+    let err = this.handleError(response);
+    if (err) throw new ExchangeError(this.id + ' has thrown an error: ' + JSON.stringify(err));
+
     let preParseBook = {};
     let arrBids = [];
     let arrAsks = [];
@@ -234,16 +245,15 @@ module.exports = class blockbid extends Exchange {
     let price = this.safeFloat(trade, 'price');
     let amount = this.safeFloat(trade, 'volume');
     let cost = price * amount;
-    let side = trade['side'] === 'bid' ? 'sell' : 'buy';
     return {
       info: trade,
       timestamp: timestamp,
       datetime: datetime,
       symbol: symbol,
-      id: trade['tradeID'],
+      id: trade['id'],
       order: undefined,
       type: undefined,
-      side: side,
+      side: trade['side'],
       price: price,
       amount: amount,
       cost: cost,
@@ -263,6 +273,10 @@ module.exports = class blockbid extends Exchange {
         params
       )
     );
+
+    let err = this.handleError(response);
+    if (err) throw new ExchangeError(this.id + ' has thrown an error: ' + JSON.stringify(err));
+
     return this.parseTrades(response, market, since, limit);
   }
 
@@ -310,6 +324,10 @@ module.exports = class blockbid extends Exchange {
     };
     if (typeof since !== 'undefined') request['timestamp'] = since;
     let response = await this.publicGetOhlc(this.extend(request, params));
+
+    let err = this.handleError(response);
+    if (err) throw new ExchangeError(this.id + ' has thrown an error: ' + JSON.stringify(err));
+
     // let ohlcv = response;//['result']['candles'];
     return this.parseOHLCVs(response, market, timeframe, since, limit);
   }
@@ -322,9 +340,9 @@ module.exports = class blockbid extends Exchange {
     let response = await this.privateGetBalances(params);
     // console.log(response.error);
     // console.log(response.message);
-    if (response.error || response.message) {
-      throw new PermissionDenied(this.id + ' fetchBalance() requires a valid api key');
-    }
+    let err = this.handleError(response);
+    if (err) throw new ExchangeError(this.id + ' has thrown an error: ' + JSON.stringify(err));
+
 
     let result = { info: response };
     for (let i = 0; i < response.length; i++) {
@@ -438,9 +456,9 @@ module.exports = class blockbid extends Exchange {
       request['orders'][0]['price'] = price;
     }
     let response = await this.privatePostOrders(this.extend(request, params));
-    if (response.error || response.message) {
-      throw new PermissionDenied(this.id + ' createOrder() requires a valid api key');
-    }
+
+    let err = this.handleError(response);
+    if (err) throw new ExchangeError(this.id + ' has thrown an error: ' + JSON.stringify(err));
 
     let order = this.parseOrder(response[0], market);
     let id = order['id'];
@@ -482,9 +500,10 @@ module.exports = class blockbid extends Exchange {
         params
       )
     );
-    if (response.error || response.message) {
-      throw new PermissionDenied(this.id + ' cancelOrders() requires a valid api key');
-    }
+
+    let err = this.handleError(response);
+    if (err) throw new ExchangeError(this.id + ' has thrown an error: ' + JSON.stringify(err));
+
     return this.parseOrders(response);
   }
 
@@ -501,9 +520,10 @@ module.exports = class blockbid extends Exchange {
         params
       )
     );
-    if (response.error || response.message) {
-      throw new PermissionDenied(this.id + ' fetchOrder() requires a valid api key');
-    }
+
+    let err = this.handleError(response);
+    if (err) throw new ExchangeError(this.id + ' has thrown an error: ' + JSON.stringify(err));
+
     return this.parseOrder(response);
   }
 
@@ -523,9 +543,9 @@ module.exports = class blockbid extends Exchange {
       limit
     };
     let result = await this.privateGetOrders(this.extend(request, params));
-    if (result.error || result.message) {
-      throw new PermissionDenied(this.id + ' fetchOpenOrders() requires a valid api key');
-    }
+
+    let err = this.handleError(response);
+    if (err) throw new ExchangeError(this.id + ' has thrown an error: ' + JSON.stringify(err));
 
     let orders = this.parseOrders(result, undefined, since, limit);
     return orders;
@@ -547,9 +567,10 @@ module.exports = class blockbid extends Exchange {
       limit
     };
     let response = await this.privateGetTradesMy(this.extend(request, params));
-    if (response.error || response.message) {
-      throw new PermissionDenied(this.id + ' fetchMyTrades() requires a valid api key');
-    }
+
+    let err = this.handleError(response);
+    if (err) throw new ExchangeError(this.id + ' has thrown an error: ' + JSON.stringify(err));
+
     return this.parseTrades(response, market, since, limit);
   }
 
@@ -621,9 +642,10 @@ module.exports = class blockbid extends Exchange {
         this.extend(request, params)
       );
     }
-    if (response.error || response.message) {
-      throw new PermissionDenied(this.id + ' fetchwithdrawals() requires a valid api key');
-    }
+
+    let err = this.handleError(response);
+    if (err) throw new ExchangeError(this.id + ' has thrown an error: ' + JSON.stringify(err));
+
     return this.parseTransactions(response, currency);
   }
 
@@ -716,6 +738,12 @@ module.exports = class blockbid extends Exchange {
       body = this.json(query);
     }
     return { url: url, method: method, body: body, headers: headers };
+  }
+
+  handleError (response) {
+    if (response.error) return response.error;
+    if (response.message) return response;
+    return null
   }
 
   nonce() {
