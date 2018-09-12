@@ -48,8 +48,8 @@ module.exports = class blockbid extends Exchange {
         '1w': 10080
       },
       urls: {
-        // api: 'https://api.dev.blockbid.io',
-        api: 'http://api.local.blockbid.io',
+        api: 'https://api.dev.blockbid.io',
+        // api: 'http://api.local.blockbid.io',
         www: 'https://devblockbid.io',
         doc: 'https://doc.devblockbid.io'
       },
@@ -396,11 +396,11 @@ module.exports = class blockbid extends Exchange {
     } else if (typeof average !== 'undefined') {
       cost = average * amount;
     }
-    if (typeof amount !== 'undefined') {
-      if (typeof filled !== 'undefined') {
-        remaining = amount - filled;
-      }
-    }
+    // if (typeof amount !== 'undefined') {
+    //   if (typeof filled !== 'undefined') {
+    //     remaining = amount - filled;
+    //   }
+    // }
     let status = this.parseOrderStatus(this.safeString(order, 'state'));
     let side = this.safeString(order, 'side');
     if (side === 'bid') {
@@ -410,19 +410,19 @@ module.exports = class blockbid extends Exchange {
     }
     return {
       id: this.safeString(order, 'id'),
-      datetime: datetime,
+      datetime,
       timestamp: new Date(datetime).getTime(),
       lastTradeTimestamp: undefined,
-      status: status,
-      symbol: symbol,
+      status,
+      symbol,
       type: this.safeString(order, 'orderType'), // market, limit, stop, stop_limit, trailing_stop, fill_or_kill
-      side: side,
-      price: price,
-      cost: cost,
-      average: average,
-      amount: amount,
-      filled: filled,
-      remaining: remaining,
+      side,
+      price,
+      cost,
+      average,
+      amount,
+      filled,
+      remaining,
       trades: this.safeString(order, 'tradesCount'),
       fee: undefined,
       info: order
@@ -544,7 +544,7 @@ module.exports = class blockbid extends Exchange {
     };
     let result = await this.privateGetOrders(this.extend(request, params));
 
-    let err = this.handleError(response);
+    let err = this.handleError(result);
     if (err) throw new ExchangeError(this.id + ' has thrown an error: ' + JSON.stringify(err));
 
     let orders = this.parseOrders(result, undefined, since, limit);
@@ -628,7 +628,8 @@ module.exports = class blockbid extends Exchange {
     }
     let currency = this.currency(code);
     let request = {
-      currency: currency['id']
+      currency: currency['id'],
+      limit,
     };
     const currencyCode = currency['code'];
     let response;
@@ -637,14 +638,15 @@ module.exports = class blockbid extends Exchange {
       let response = await this.privateGetWithdrawsFiat(
         this.extend(request, params)
       );
+      let err = this.handleError(response);
+      if (err) throw new ExchangeError(this.id + ' has thrown an error: ' + JSON.stringify(err));
     } else {
       let response = await this.privateGetWithdrawsCrypto(
         this.extend(request, params)
       );
+      let err = this.handleError(response);
+      if (err) throw new ExchangeError(this.id + ' has thrown an error: ' + JSON.stringify(err));
     }
-
-    let err = this.handleError(response);
-    if (err) throw new ExchangeError(this.id + ' has thrown an error: ' + JSON.stringify(err));
 
     return this.parseTransactions(response, currency);
   }

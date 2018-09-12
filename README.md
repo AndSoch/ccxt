@@ -122,7 +122,105 @@ ccxt has a generic format it wants all its responses to take. There are properti
 
     No comments other than ccxt parse it and reverse it back to an array form.
 
-  -
+
+  Private Endpoints
+
+  - fetchBalances()
+
+    example response:
+
+    { info:
+     [ { currency: 'bch', total: 0, locked: 0, available: 0 },
+       { currency: 'btc', total: 1.058, locked: 0, available: 1.058 },
+       { currency: 'ltc', total: 0, locked: 0, available: 0 },
+       { currency: 'usd',
+         total: 3713.57,
+         locked: 53,
+         available: 3660.57 },
+       { currency: 'xrp', total: 0, locked: 0, available: 0 } ],
+    BCH: { free: 0, used: 0, total: 0 },
+    BTC: { free: 1.058, used: 0, total: 1.058 },
+    ltc: { free: 0, used: 0, total: 0 },
+    USD: { free: 3660.57, used: 53, total: 3713.57 },
+    xrp: { free: 0, used: 0, total: 0 },
+    free: { BCH: 0, BTC: 1.058, ltc: 0, USD: 3660.57, xrp: 0 },
+    used: { BCH: 0, BTC: 0, ltc: 0, USD: 53, xrp: 0 },
+    total: { BCH: 0, BTC: 1.058, ltc: 0, USD: 3713.57, xrp: 0 } }
+
+  - fetchMyTrades()
+
+    Example response:
+
+      { info:
+       { id: 9,
+         price: 10000,
+         volume: 0.01,
+         funds: 100,
+         market: 'btcusd',
+         createdAt: '2018-06-25T06:49:53.000Z',
+         side: 'ask' },
+      timestamp: 1529909393000,
+      datetime: '2018-06-25T06:49:53.000Z',
+      symbol: 'BTC/USD',
+      id: 9,
+      order: undefined,
+      type: undefined,
+      side: 'ask',
+      price: 10000,
+      amount: 0.01,
+      cost: 100,
+      fee: undefined } ]
+
+    Parsing is the same as my trades but side is working.
+
+  - createOrder()
+
+    Example Response:
+    {
+      id: '364',
+      datetime: '2018-09-12T04:37:14.000Z',
+      timestamp: 1536727034000,
+      lastTradeTimestamp: undefined,
+      status: 'wait',
+      symbol: 'BTC/USD',
+      type: 'limit',
+      side: 'buy',
+      price: 10,
+      cost: 0,
+      average: 0,
+      amount: undefined,
+      filled: 0,
+      remaining: 0.0001,
+      trades: '0',
+      fee: undefined,
+      info:
+       { id: 364,
+         side: 'buy',
+         orderType: 'limit',
+         price: 10,
+         averagePrice: 0,
+         createdAt: '2018-09-12T04:37:14.000Z',
+         volume: null,
+         state: 'wait',
+         market: 'btcusd',
+         remainingVolume: 0.0001,
+         executedVolume: 0,
+         tradesCount: 0 }
+       }
+
+  - fetchOpenOrders()
+    same as above but an array of objects
+
+  - cancelOrder()
+    same as above object
+  - cancelOrders()
+    same as above but an array of objects
+
+  - fetchWithdrawals()
+
+
+
+
 
 
 # CCXT – CryptoCurrency eXchange Trading Library
