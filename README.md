@@ -1,5 +1,44 @@
 # Notes for Blockbid Implementation
 
+1. clone the repo into a folder in your project.
+
+2. import ccxt like: `const ccxt = require('./ccxt-copy');`
+
+3. Instantiate and use blockbid like:
+
+```
+const ccxt = require('./ccxt-copy');
+
+(async function() {
+  let blockbid = new ccxt.blockbid({
+    apiKey: 'MY_KEY',
+    secret: 'MY_SECRET',
+  });
+
+  console.log('Calling fetchMarkets()');
+
+  const markets = await blockbid.fetchMarkets();
+
+  console.log('Markets are:', markets);
+
+})();
+```
+
+What needs to be done still:
+
+-- Implement withdraw post.
+-- Figure out how to replicate library for Python and PHP.
+-- Potentially integrate multi order but currently unsure about the correct process.
+-- Server Time.
+-- Other things related to existing routes are mentionwed below.
+
+example usage:
+
+To run examples, from the root folder:
+
+`node path/to/the/example.js` (Path to the example you want to run)
+
+
 The following function calls have been integrated:
 
 Public routes:
@@ -41,7 +80,7 @@ ccxt has a generic format it wants all its responses to take. There are properti
 
 
     response example with comments:
-
+```
       symbol: 'BTC/USD',
       timestamp: 1536713431000,
       datetime: '2018-09-12T00:50:31.000Z',
@@ -65,15 +104,16 @@ ccxt has a generic format it wants all its responses to take. There are properti
        { timestamp: '2018-09-12T00:50:31.000Z',
          market: 'btcusd',
          last: 12312313 }
+```         
 
-         As you can see from this example, theres alot of data pieces missing that we could / should probably implement. I think we filtered out several fields when building the tickers route, perhaps we should reimplement them?
+  As you can see from this example, theres alot of data pieces missing that we could / should probably implement. I think we filtered out several fields when building the tickers route, perhaps we should reimplement them?
 
  - fetchTickers()
 
     same as above just an array of all the tickers. Same empty fields apply.
 
  - fetchOrderBook()
-
+```
      { bids:
         [ [ 6335.05859999, 3157034.41249744 ],
         [ 6335.05859999, 3157034.57801972 ],
@@ -87,11 +127,11 @@ ccxt has a generic format it wants all its responses to take. There are properti
       timestamp: undefined,
       datetime: undefined,
       nonce: undefined }
-
+```
       We should attach a timestamp / 'createdAt' to our orderbook before sending it to the user.
 
   - fetchTrades()
-
+```
       { info:
           { id: 328939,
            price: 12312313,
@@ -112,13 +152,14 @@ ccxt has a generic format it wants all its responses to take. There are properti
           cost: 0.61561565,
           fee: undefined
       }
-
+```
       Alot of data is there, still need to fix issues with side.
 
   - fetchOHLCV()
 
     example period:
-    [ 1535932800000, 7078.88724893, 12312313, 5000, 10000, 1.3162 ],
+
+  `[ 1535932800000, 7078.88724893, 12312313, 5000, 10000, 1.3162 ],`
 
     No comments other than ccxt parse it and reverse it back to an array form.
 
@@ -128,7 +169,7 @@ ccxt has a generic format it wants all its responses to take. There are properti
   - fetchBalances()
 
     example response:
-
+```
     { info:
      [ { currency: 'bch', total: 0, locked: 0, available: 0 },
        { currency: 'btc', total: 1.058, locked: 0, available: 1.058 },
@@ -146,11 +187,11 @@ ccxt has a generic format it wants all its responses to take. There are properti
     free: { BCH: 0, BTC: 1.058, ltc: 0, USD: 3660.57, xrp: 0 },
     used: { BCH: 0, BTC: 0, ltc: 0, USD: 53, xrp: 0 },
     total: { BCH: 0, BTC: 1.058, ltc: 0, USD: 3713.57, xrp: 0 } }
-
+```
   - fetchMyTrades()
 
     Example response:
-
+```
       { info:
        { id: 9,
          price: 10000,
@@ -170,11 +211,11 @@ ccxt has a generic format it wants all its responses to take. There are properti
       amount: 0.01,
       cost: 100,
       fee: undefined } ]
-
+```
     Parsing is the same as my trades but side is working.
 
   - createOrder()
-
+```
     Example Response:
     {
       id: '364',
@@ -207,7 +248,7 @@ ccxt has a generic format it wants all its responses to take. There are properti
          executedVolume: 0,
          tradesCount: 0 }
        }
-
+```
   - fetchOpenOrders()
     same as above but an array of objects
 
