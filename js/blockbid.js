@@ -106,7 +106,7 @@ module.exports = class blockbid extends Exchange {
         let markets = await this.publicGetMarkets ();
         let err = this.handleError (markets);
         if (err) {
-            throw new ExchangeError (this.id + ' has thrown an error: ' + JSON.stringify (err))
+            throw new ExchangeError (this.id + ' has thrown an error: ' + err)
         }
         let result = [];
         for (let i = 0; i < markets.length; i++) {
@@ -144,7 +144,7 @@ module.exports = class blockbid extends Exchange {
                 },
                 'info': market,
             });
-        };
+        }
         return result;
     }
 
@@ -159,13 +159,13 @@ module.exports = class blockbid extends Exchange {
                 let base = this.commonCurrencyCode (baseId);
                 let quote = this.commonCurrencyCode (quoteId);
                 symbol = base + '/' + quote;
-            };
-        };
+            }
+        }
         if (typeof market !== 'undefined') {
             symbol = market['symbol'];
-        };
+        }
         let datetime = this.safeString (ticker, 'timestamp');
-        let timestamp = new Date (datetime).getTime ();
+        let timestamp = this.parse8601 (datetime);
         let last = this.safeFloat (ticker, 'last');
         return {
             'symbol': symbol,
@@ -187,8 +187,7 @@ module.exports = class blockbid extends Exchange {
             'average': undefined,
             'baseVolume': this.safeFloat (ticker, '24h_volume'),
             'quoteVolume': this.safeFloat (ticker, 'quote_volume'),
-            'info': ticker,
-        };
+            'info': ticker }
     }
 
     async fetchTicker (symbol = undefined, params = {}) {
@@ -196,15 +195,14 @@ module.exports = class blockbid extends Exchange {
         let tickers = await this.publicGetTickers (params);
         let err = this.handleError (tickers);
         if (err) {
-            throw new ExchangeError (this.id + ' has thrown an error: ' + JSON.stringify (err));
-        };
+            throw new ExchangeError (this.id + ' has thrown an error: ' + err);
+        }
         const marketId = this.marketId (symbol);
-        let result = [];
         for (let i = 0; i < tickers.length; i++) {
             const ticker = tickers[i];
             if (ticker.market === marketId) {
                 return this.parseTicker (ticker);
-            };
+            }
         }
     }
 
@@ -214,7 +212,7 @@ module.exports = class blockbid extends Exchange {
         let result = [];
         for (let i = 0; i < tickers.length; i++) {
             result.push (this.parseTicker (tickers[i]));
-        };
+        }
         return this.indexBy (result, 'symbol');
     }
 
@@ -226,21 +224,21 @@ module.exports = class blockbid extends Exchange {
         if (typeof limit !== 'undefined') {
             request['asks_limit'] = limit;
             request['bids_limit'] = limit;
-        };
+        }
         let response = await this.publicGetOrderbook (this.extend (request, params));
         let err = this.handleError (response);
         if (err) {
-            throw new ExchangeError (this.id + ' has thrown an error: ' + JSON.stringify (err));
-        };
+            throw new ExchangeError (this.id + ' has thrown an error: ' + err);
+        }
         let preParseBook = {};
         let arrBids = [];
         let arrAsks = [];
         for (let i = 0; i < response.bids.length; i++) {
             arrBids.push ([response.bids[i].price, response.bids[i].volume, []]);
-        };
+        }
         for (let i = 0; i < response.asks.length; i++) {
             arrAsks.push ([response.asks[i].price, response.asks[i].volume, []]);
-        };
+        }
         preParseBook['bids'] = arrBids;
         preParseBook['asks'] = arrAsks;
         return this.parseOrderBook (preParseBook, undefined, 'bids', 'asks', 0, 1);
@@ -250,9 +248,9 @@ module.exports = class blockbid extends Exchange {
         let symbol = undefined;
         if (market) {
             symbol = market['symbol'];
-        };
+        }
         let datetime = trade['createdAt'];
-        let timestamp = new Date (datetime).getTime ();
+        let timestamp = this.parse8601 (datetime);
         let price = this.safeFloat (trade, 'price');
         let amount = this.safeFloat (trade, 'volume');
         let cost = price * amount;
@@ -268,8 +266,7 @@ module.exports = class blockbid extends Exchange {
             'price': price,
             'amount': amount,
             'cost': cost,
-            'fee': undefined,
-        };
+            'fee': undefined };
     }
 
     async fetchTrades (symbol, since = undefined, limit = 50, params = {}) {
@@ -279,23 +276,17 @@ module.exports = class blockbid extends Exchange {
             this.extend ({
                 'market': market['id'],
                 'limit': limit,
-            }, params )
+            }, params)
         );
         let err = this.handleError (response);
         if (err) {
-            throw new ExchangeError (this.id + ' has thrown an error: ' + JSON.stringify (err));
-        };
+            throw new ExchangeError (this.id + ' has thrown an error: ' + err);
+        }
         return this.parseTrades (response, market, since, limit);
     }
 
-    parseOHLCV (
-        ohlcv,
-        market = undefined,
-        timeframe = '5m',
-        since = undefined,
-        limit = undefined,
-    ) {
-        let datetime = new Date (ohlcv['timestamp']).getTime ();
+    parseOHLCV (ohlcv, market = undefined, timeframe = '5m', since = undefined, limit = undefined ) {
+        let datetime = this.parse8601 (ohlcv['timestamp']);
         return [
             datetime,
             parseFloat (ohlcv['open']),
@@ -306,28 +297,21 @@ module.exports = class blockbid extends Exchange {
         ];
     }
 
-    async fetchOHLCV (
-        symbol,
-        timeframe = '1m',
-        since = undefined,
-        limit = undefined,
-        params = {},
-    ) {
+    async fetchOHLCV (symbol, timeframe = '1m', since = undefined, limit = undefined, params = {} ) {
         await this.loadMarkets ();
         let market = this.market (symbol);
-        let endTime = this.milliseconds ();
         let request = {
             'market': market['id'],
             'period': this.timeframes[timeframe],
         };
         if (typeof since !== 'undefined') {
             request['timestamp'] = since;
-        };
+        }
         let response = await this.publicGetOhlc (this.extend (request, params));
         let err = this.handleError (response);
         if (err) {
-            throw new ExchangeError (this.id + ' has thrown an error: ' + JSON.stringify (err));
-        };
+            throw new ExchangeError (this.id + ' has thrown an error: ' + err);
+        }
         return this.parseOHLCVs (response, market, timeframe, since, limit);
     }
 
@@ -335,26 +319,26 @@ module.exports = class blockbid extends Exchange {
         await this.loadMarkets ();
         if (!this.apiKey || !this.secret) {
             throw new PermissionDenied (this.id + ' fetchBalance() requires you to have a valid api key and secret.');
-        };
+        }
         let response = await this.privateGetBalances (params);
         let err = this.handleError (response);
         if (err) {
-            throw new ExchangeError (this.id + ' has thrown an error: ' + JSON.stringify (err));
-        };
+            throw new ExchangeError (this.id + ' has thrown an error: ' + err);
+        }
         let result = { 'info': response };
         for (let i = 0; i < response.length; i++) {
             let balance = response[i];
             let currency = balance['currency'];
             if (currency in this.currencies_by_id) {
                 currency = this.currencies_by_id[currency]['code'];
-            };
+            }
             let account = {
                 'free': balance['available'],
                 'used': balance['locked'],
                 'total': balance['total'],
             };
             result[currency] = account;
-        };
+        }
         return this.parseBalance (result);
     }
 
@@ -371,7 +355,9 @@ module.exports = class blockbid extends Exchange {
             'cancelled': 'canceled',
             'triggered': 'triggered',
         };
-        if (status in statuses) return statuses[status];
+        if (status in statuses) {
+            return statuses[status];
+        }
         return status;
     }
 
@@ -380,8 +366,10 @@ module.exports = class blockbid extends Exchange {
         if (typeof market === 'undefined') {
             let marketId = this.safeString2 (order, 'market');
             market = this.safeValue (this.markets_by_id, marketId);
-        };
-        if (typeof market !== 'undefined') symbol = market['symbol'];
+        }
+        if (typeof market !== 'undefined') {
+            symbol = market['symbol'];
+        }
         let datetime = this.safeString (order, 'createdAt');
         let price = this.safeFloat (order, 'price');
         let average = this.safeFloat (order, 'averagePrice');
@@ -401,10 +389,11 @@ module.exports = class blockbid extends Exchange {
         } else if (side === 'ask') {
             side = 'sell';
         }
+        let timestamp = this.parse8601 (datetime);
         return {
             'id': this.safeString (order, 'id'),
             'datetime': datetime,
-            'timestamp': new Date (datetime).getTime (),
+            'timestamp': timestamp,
             'lastTradeTimestamp': undefined,
             'status': status,
             'symbol': symbol,
@@ -418,330 +407,244 @@ module.exports = class blockbid extends Exchange {
             'trades': this.safeString (order, 'tradesCount'),
             'remaining': remaining,
             'fee': undefined,
-            'info': order,
+            'info': order };
+    }
+
+    async createOrder (symbol, type, side, amount, price = undefined, params = {}) {
+        if (!this.apiKey || !this.secret) {
+            throw new PermissionDenied (this.id + ' createOrder() requires you to have a valid api key and secret.');
+        }
+        await this.loadMarkets ();
+        let market = this.market (symbol);
+        let request = {
+            'market': market['id'],
+            'orders': [
+                {
+                    'side': side,
+                    'volume': amount,
+                    'ord_type': type,
+                },
+            ],
+        };
+        if (type !== 'market') {
+            request['orders'][0]['price'] = price;
+        }
+        let response = await this.privatePostOrders (this.extend (request, params));
+        let err = this.handleError (response);
+        if (err) {
+            throw new ExchangeError (this.id + ' has thrown an error: ' + err)
+        }
+        let order = this.parseOrder (response[0], market);
+        let id = order['id'];
+        this.orders[id] = order;
+        return order;
+    }
+
+    async cancelOrder (id, params = {}) {
+        if (!this.apiKey || !this.secret) {
+            throw new PermissionDenied (this.id + ' cancelOrder() requires you to have a valid api key and secret.');
+        }
+        let response = await this.privateDeleteOrdersId (
+            this.extend ({
+                'id': id,
+            }, params)
+        );
+        if (response.error || response.message) {
+            throw new PermissionDenied (this.id + ' cancelOrder() requires a valid api key');
+        }
+        return this.parseOrder (
+            this.extend (response, { 'id': id })
+        );
+    }
+
+    async cancelOrders (side, params = {}) {
+        if (!this.apiKey || !this.secret) {
+            throw new PermissionDenied (this.id + ' cancelOrders() requires you to have a valid api key and secret.');
+        }
+        let response = await this.privateDeleteOrders (
+            this.extend ({ 'side': side }, params)
+        );
+        let err = this.handleError (response);
+        if (err) {
+            throw new ExchangeError (this.id + ' has thrown an error: ' + err);
+        }
+        return this.parseOrders (response);
+    }
+
+    async fetchOrder (id, symbol = undefined, params = {}) {
+        if (!this.apiKey || !this.secret) {
+            throw new PermissionDenied (this.id + ' fetchOrder() requires you to have a valid api key and secret.');
+        }
+        await this.loadMarkets ();
+        let response = await this.privateGetOrdersId (
+            this.extend ({ 'id': id.toString () }, params)
+        );
+        let err = this.handleError (response);
+        if (err) {
+            throw new ExchangeError (this.id + ' has thrown an error: ' + err);
+        }
+        return this.parseOrder (response);
+    }
+
+    async fetchOpenOrders (symbol = undefined, since = undefined, limit = undefined, params = {}) {
+        if (!this.apiKey || !this.secret) {
+            throw new PermissionDenied (this.id + ' fetchOpenOrders() requires you to have a valid api key and secret.');
+        }
+        await this.loadMarkets ();
+        let market = this.market (symbol);
+        let request = {
+            'market': market['id'],
+            'limit': limit,
+        };
+        let result = await this.privateGetOrders (this.extend (request, params));
+        let err = this.handleError (result);
+        if (err) {
+            throw new ExchangeError (this.id + ' has thrown an error: ' + err);
+        }
+        let orders = this.parseOrders (result, undefined, since, limit);
+        return orders;
+    }
+
+    async fetchMyTrades (symbol = undefined, since = undefined, limit = undefined, params = {}) {
+        if (!this.apiKey || !this.secret) {
+            throw new PermissionDenied (this.id + ' fetchMyTrades() requires you to have a valid api key and secret.');
+        }
+        await this.loadMarkets ();
+        let market = this.market (symbol);
+        let request = {
+            'market': market['id'],
+            'limit': limit,
+        };
+        let response = await this.privateGetTradesMy (this.extend (request, params));
+        let err = this.handleError (response);
+        if (err) {
+            throw new ExchangeError (this.id + ' has thrown an error: ' + err);
+        }
+        return this.parseTrades (response, market, since, limit);
+    }
+
+    async fetchWithdrawals (code = undefined, since = undefined, limit = undefined, params = {}) {
+        if (!this.apiKey || !this.secret) {
+            throw new PermissionDenied (this.id + ' fetchWithdrawals() requires you to have a valid api key and secret.');
+        }
+        await this.loadMarkets ();
+        if (typeof code === 'undefined') {
+            throw new ExchangeError (this.id + ' fetchWithdrawals() requires a currency code argument');
+        }
+        let currency = this.currency (code);
+        let request = {
+            'currency': currency['id'],
+            'limit': limit,
+        };
+        const currencyCode = currency['code'];
+        if (this.supportedFiat.indexOf (currencyCode) !== -1) {
+            let response = await this.privateGetWithdrawsFiat (
+                this.extend (request, params)
+            );
+            let err = this.handleError (response);
+            if (err) {
+                throw new ExchangeError (this.id + ' has thrown an error: ' + err);
+            }
+            return this.parseTransactions (response, currency);
+        } else {
+            let response = await this.privateGetWithdrawsCrypto (
+                this.extend (request, params)
+            );
+            let err = this.handleError (response);
+            if (err) {
+                throw new ExchangeError (this.id + ' has thrown an error: ' + err);
+            }
+            return this.parseTransactions (response, currency);
+        }
+    }
+
+    parseTransactionStatus (status) {
+        let statuses = {
+            'tx_pending_two_factor_auth': 'pending',
+            'tx_pending_email_auth': 'pending',
+            'tx_pending_approval': 'pending',
+            'tx_approved': 'pending',
+            'tx_processing': 'pending',
+            'tx_pending': 'pending',
+            'tx_sent': 'pending',
+            'tx_cancelled': 'canceled',
+            'tx_timeout': 'error',
+            'tx_invalid': 'error',
+            'tx_rejected': 'error',
+            'tx_confirmed': 'ok',
+        };
+        return status in statuses ? statuses[status] : status.toLowerCase ();
+    }
+
+    parseTransaction (transaction, currency = undefined) {
+        let datetime = this.safeString (transaction, 'timeCreated');
+        let timestamp = this.parse8601 (datetime);
+        let code = undefined;
+        if (typeof currency === 'undefined') {
+            let currencyId = this.safeString (transaction, 'currency');
+            if (currencyId in this.currencies_by_id) {
+                currency = this.currencies_by_id[currencyId];
+            }
+            code = this.commonCurrencyCode (currencyId);
+        }
+        if (typeof currency !== 'undefined') {
+            code = currency['code'];
+        }
+        return {
+            'info': transaction,
+            'id': this.safeString (transaction, 'withdrawID'),
+            'txid': this.safeString (transaction, 'txid'),
+            'timestamp': timestamp,
+            'datetime': datetime,
+            'address': this.safeString (transaction, 'address'), // or is it defined?
+            'type': undefined, // direction of the transaction, ('deposit' | 'withdraw')
+            'amount': this.safeFloat (transaction, 'amount'),
+            'currency': code,
+            'status': this.parseTransactionStatus (transaction['state']),
+            'updated': this.safeString (transaction, 'timeUpdated'),
+            'fee': {
+                'cost': this.safeFloat (transaction, 'fee'),
+                'rate': undefined,
+            },
         };
     }
 
-  async createOrder (
-    symbol,
-    type,
-    side,
-    amount,
-    price = undefined,
-    params = {}
-  ) {
-    if (!this.apiKey || !this.secret) {
-      throw new PermissionDenied (this.id + ' createOrder() requires you to have a valid api key and secret.');
-    }
-    await this.loadMarkets ();
-    let market = this.market (symbol);
-    let request = {
-      market: market['id'],
-      orders: [
-        {
-          side: side,
-          volume: amount,
-          ord_type: type // market, limit, stop, stop_limit
+    sign (path, api = 'public', method = 'GET', params = {}, headers = undefined, body = undefined) {
+        let url = this.urls['api'] + '/' + this.implodeParams (path, params);
+        let query = this.omit (params, this.extractParams (path));
+        headers = {};
+        if (api === 'private') {
+            let nonce = this.safeString (this.nonce ());
+            let rawSignature = this.stringToBase64 (this.apiKey) + this.stringToBase64 (nonce);
+            this.checkRequiredCredentials ();
+            const signature = this.hmac (rawSignature, this.secret, 'sha384', 'base64');
+            headers['X-Blockbid-Signature'] = signature;
+            headers['X-Blockbid-Nonce'] = nonce;
+            headers['X-Blockbid-Api-Key'] = this.apiKey;
         }
-      ]
-    };
-    if (type !== 'market') {
-      request['orders'][0]['price'] = price;
-    }
-    let response = await this.privatePostOrders (this.extend (request, params));
-
-    let err = this.handleError (response);
-    if (err) throw new ExchangeError (this.id + ' has thrown an error: ' + JSON.stringify (err));
-
-    let order = this.parseOrder (response[0], market);
-    let id = order['id'];
-    this.orders[id] = order;
-    return order;
-  }
-
-  async cancelOrder (id, params = {}) {
-    if (!this.apiKey || !this.secret) {
-      throw new PermissionDenied (this.id + ' cancelOrder() requires you to have a valid api key and secret.');
-    }
-    let response = await this.privateDeleteOrdersId (
-      this.extend (
-        {
-          id: id
-        },
-        params
-      )
-    );
-    if (response.error || response.message) {
-      throw new PermissionDenied (this.id + ' cancelOrder() requires a valid api key');
-    }
-    return this.parseOrder (
-      this.extend (response, {
-        id: id
-      })
-    );
-  }
-
-  async cancelOrders (side, params = {}) {
-    if (!this.apiKey || !this.secret) {
-      throw new PermissionDenied (this.id + ' cancelOrders() requires you to have a valid api key and secret.');
-    }
-    let response = await this.privateDeleteOrders (
-      this.extend (
-        {
-          side: side
-        },
-        params
-      )
-    );
-
-    let err = this.handleError (response);
-    if (err) throw new ExchangeError (this.id + ' has thrown an error: ' + JSON.stringify (err));
-
-    return this.parseOrders (response);
-  }
-
-  async fetchOrder (id, symbol = undefined, params = {}) {
-    if (!this.apiKey || !this.secret) {
-      throw new PermissionDenied (this.id + ' fetchOrder() requires you to have a valid api key and secret.');
-    }
-    await this.loadMarkets ();
-    let response = await this.privateGetOrdersId (
-      this.extend (
-        {
-          id: id.toString ()
-        },
-        params
-      )
-    );
-
-    let err = this.handleError (response);
-    if (err) throw new ExchangeError (this.id + ' has thrown an error: ' + JSON.stringify (err));
-
-    return this.parseOrder (response);
-  }
-
-  async fetchOpenOrders (
-    symbol = undefined,
-    since = undefined,
-    limit = undefined,
-    params = {}
-  ) {
-    if (!this.apiKey || !this.secret) {
-      throw new PermissionDenied (this.id + ' fetchOpenOrders() requires you to have a valid api key and secret.');
-    }
-    await this.loadMarkets ();
-    let market = this.market (symbol);
-    let request = {
-      market: market['id'],
-      limit
-    };
-    let result = await this.privateGetOrders (this.extend (request, params));
-
-    let err = this.handleError (result);
-    if (err) throw new ExchangeError (this.id + ' has thrown an error: ' + JSON.stringify (err));
-
-    let orders = this.parseOrders (result, undefined, since, limit);
-    return orders;
-  }
-
-  async fetchMyTrades (
-    symbol = undefined,
-    since = undefined,
-    limit = undefined,
-    params = {}
-  ) {
-    if (!this.apiKey || !this.secret) {
-      throw new PermissionDenied (this.id + ' fetchMyTrades() requires you to have a valid api key and secret.');
-    }
-    await this.loadMarkets ();
-    let market = this.market (symbol);
-    let request = {
-      market: market['id'],
-      limit
-    };
-    let response = await this.privateGetTradesMy (this.extend (request, params));
-
-    let err = this.handleError (response);
-    if (err) throw new ExchangeError (this.id + ' has thrown an error: ' + JSON.stringify (err));
-
-    return this.parseTrades (response, market, since, limit);
-  }
-
-  // Leave for now as scopes do not permit
-  // async fetchDepositAddress (code, params = {}) {
-  //     await this.loadMarkets ();
-  //     let currency = this.currency (code);
-  //     console.log(currency);
-  //     let response = await this.privateGetAddresses (this.extend ({
-  //         'currency': currency['id'],
-  //     }, params));
-  //     console.log(response);
-  //     let addresses = this.safeValue (response['result'], 'deposit_addresses', []);
-  //     let address = undefined;
-  //     if (addresses.length > 0) {
-  //         address = this.safeString (addresses[0], 'address');
-  //     }
-  //     this.checkAddress (address);
-  //     return {
-  //         'currency': code,
-  //         'address': address,
-  //         'info': response,
-  //     };
-  // }
-  //
-  // // also not available
-  // async fetchDeposits (code = undefined, since = undefined, limit = undefined, params = {}) {
-  //     await this.loadMarkets ();
-  //     // if (typeof code === 'undefined') {
-  //     //     throw new ExchangeError (this.id + ' fetchDeposits() requires a currency code arguemnt');
-  //     let request = {};
-  //     if (code) {
-  //     // }
-  //       let currency = this.currency (code);
-  //       request['currency'] = currency['id'];
-  //     }
-  //     let response = await this.privateGetDeposits (this.extend (request, params));
-  //     return this.parseTransactions (response['result']['deposits'], currency);
-  // }
-
-  async fetchWithdrawals (
-    code = undefined,
-    since = undefined,
-    limit = undefined,
-    params = {}
-  ) {
-    if (!this.apiKey || !this.secret) {
-      throw new PermissionDenied (this.id + ' fetchWithdrawals() requires you to have a valid api key and secret.');
-    }
-    await this.loadMarkets ();
-    if (typeof code === 'undefined') {
-      throw new ExchangeError (
-        this.id + ' fetchWithdrawals() requires a currency code argument'
-      );
-    }
-    let currency = this.currency (code);
-    let request = {
-      currency: currency['id'],
-      limit,
-    };
-    const currencyCode = currency['code'];
-    let response;
-
-    if (this.supportedFiat.indexOf (currencyCode) !== -1) {
-      let response = await this.privateGetWithdrawsFiat (
-        this.extend (request, params)
-      );
-      let err = this.handleError (response);
-      if (err) throw new ExchangeError (this.id + ' has thrown an error: ' + JSON.stringify (err));
-    } else {
-      let response = await this.privateGetWithdrawsCrypto (
-        this.extend (request, params)
-      );
-      let err = this.handleError (response);
-      if (err) throw new ExchangeError (this.id + ' has thrown an error: ' + JSON.stringify (err));
+        if (method === 'GET') {
+            query = this.urlencode (query);
+            if (query.length) {
+                url += '?' + query;
+            }
+        } else {
+            headers['Content-type'] = 'application/json; charset=UTF-8';
+            body = this.json (query);
+        }
+        return { 'url': url, 'method': method, 'body': body, 'headers': headers };
     }
 
-    return this.parseTransactions (response, currency);
-  }
-
-  parseTransactionStatus (status) {
-    let statuses = {
-      tx_pending_two_factor_auth: 'pending',
-      tx_pending_email_auth: 'pending',
-      tx_pending_approval: 'pending',
-      tx_approved: 'pending',
-      tx_processing: 'pending',
-      tx_pending: 'pending',
-      tx_sent: 'pending',
-      tx_cancelled: 'canceled',
-      tx_timeout: 'error',
-      tx_invalid: 'error',
-      tx_rejected: 'error',
-      tx_confirmed: 'ok'
-    };
-    return status in statuses ? statuses[status] : status.toLowerCase ();
-  }
-
-  parseTransaction (transaction, currency = undefined) {
-    let datetime = this.safeString (transaction, 'timeCreated');
-    let timestamp = new Date (datetime).getTime ();
-    let code = undefined;
-    if (typeof currency === 'undefined') {
-      let currencyId = this.safeString (transaction, 'currency');
-      if (currencyId in this.currencies_by_id) {
-        currency = this.currencies_by_id[currencyId];
-      } else {
-      }
-      code = this.commonCurrencyCode (currencyId);
-    }
-    if (typeof currency !== 'undefined') {
-      code = currency['code'];
+    handleError (response) {
+        if (response.error) {
+            return response.error.message;
+        }
+        if (response.message) {
+            return response.message;
+        }
+        return undefined;
     }
 
-    return {
-      info: transaction,
-      id: this.safeString (transaction, 'withdrawID'),
-      txid: this.safeString (transaction, 'txid'),
-      timestamp: timestamp,
-      datetime: datetime,
-      address: this.safeString (transaction, 'address'), // or is it defined?
-      type: undefined, // direction of the transaction, ('deposit' | 'withdraw')
-      amount: this.safeFloat (transaction, 'amount'),
-      currency: code,
-      status: this.parseTransactionStatus (transaction['state']),
-      updated: this.safeString (transaction, 'timeUpdated'),
-      fee: {
-        cost: this.safeFloat (transaction, 'fee'),
-        rate: undefined
-      }
-    };
-  }
-
-  sign (
-    path,
-    api = 'public',
-    method = 'GET',
-    params = {},
-    headers = undefined,
-    body = undefined
-  ) {
-    let url = this.urls['api'] + '/' + this.implodeParams (path, params);
-    let query = this.omit (params, this.extractParams (path));
-    headers = {};
-    if (api === 'private') {
-      let nonce = String (this.nonce ());
-      let rawSignature =
-        this.stringToBase64 (this.apiKey) + this.stringToBase64 (nonce);
-      this.checkRequiredCredentials ();
-
-      const signature = this.hmac (
-        rawSignature,
-        this.secret,
-        'sha384',
-        'base64'
-      );
-
-      headers['X-Blockbid-Signature'] = signature;
-      headers['X-Blockbid-Nonce'] = nonce;
-      headers['X-Blockbid-Api-Key'] = this.apiKey;
+    nonce () {
+        return this.milliseconds ();
     }
-    if (method === 'GET') {
-      query = this.urlencode (query);
-      if (query.length) url += '?' + query;
-    } else {
-      headers['Content-type'] = 'application/json; charset=UTF-8';
-      body = this.json (query);
-    }
-    return { url: url, method: method, body: body, headers: headers };
-  }
-
-  handleError (response) {
-    if (response.error) return response.error;
-    if (response.message) return response;
-    return null
-  }
-
-  nonce () {
-    return this.milliseconds ();
-  }
 };
