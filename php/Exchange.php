@@ -110,6 +110,7 @@ class Exchange {
         'bitz',
         'bl3p',
         'bleutrade',
+        'blockbid',
         'braziliex',
         'btcalpha',
         'btcbox',
