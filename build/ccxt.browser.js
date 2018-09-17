@@ -15931,7 +15931,10 @@ module.exports = class blockbid extends Exchange {
             let base = this.commonCurrencyCode (baseId);
             let quote = this.commonCurrencyCode (quoteId);
             let symbol = base + '/' + quote;
-            let precision = undefined;
+            let precision = {
+                'amount': 8,
+                'price': undefined,
+            };
             let active = this.safeValue (market, 'is_active', true);
             result.push ({
                 'id': id,
@@ -16014,7 +16017,7 @@ module.exports = class blockbid extends Exchange {
         const marketId = this.marketId (symbol);
         for (let i = 0; i < tickers.length; i++) {
             const ticker = tickers[i];
-            if (ticker.market === marketId) {
+            if (ticker['market'] === marketId) {
                 return this.parseTicker (ticker);
             }
         }
@@ -16428,7 +16431,8 @@ module.exports = class blockbid extends Exchange {
         let query = this.omit (params, this.extractParams (path));
         headers = {};
         if (api === 'private') {
-            let nonce = this.safeString (this.nonce ());
+            let nonce = this.nonce ();
+            nonce = nonce.toString ();
             let rawSignature = this.stringToBase64 (this.apiKey) + this.stringToBase64 (nonce);
             this.checkRequiredCredentials ();
             const signature = this.hmac (rawSignature, this.secret, 'sha384', 'base64');
@@ -16449,13 +16453,17 @@ module.exports = class blockbid extends Exchange {
     }
 
     handleError (response) {
-        if (response.error) {
-            return response.error.message;
+        try {
+            if (response['error']) {
+                return response['error']['message'];
+            }
+            if (response['message']) {
+                return response['message'];
+            }
+            return undefined;
+        } catch (error) {
+            return undefined;
         }
-        if (response.message) {
-            return response.message;
-        }
-        return undefined;
     }
 
     nonce () {

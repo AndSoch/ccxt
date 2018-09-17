@@ -115,7 +115,10 @@ class blockbid (Exchange):
             base = self.common_currency_code(baseId)
             quote = self.common_currency_code(quoteId)
             symbol = base + '/' + quote
-            precision = None
+            precision = {
+                'amount': 8,
+                'price': None,
+            }
             active = self.safe_value(market, 'is_active', True)
             result.append({
                 'id': id,
@@ -191,7 +194,7 @@ class blockbid (Exchange):
         marketId = self.market_id(symbol)
         for i in range(0, len(tickers)):
             ticker = tickers[i]
-            if ticker.market == marketId:
+            if ticker['market'] == marketId:
                 return self.parse_ticker(ticker)
 
     def fetch_tickers(self, symbols=None, params={}):
@@ -545,7 +548,8 @@ class blockbid (Exchange):
         query = self.omit(params, self.extract_params(path))
         headers = {}
         if api == 'private':
-            nonce = self.safe_string(self.nonce())
+            nonce = self.nonce()
+            nonce = str(nonce)
             rawSignature = base64.b64encode(self.apiKey) + base64.b64encode(nonce)
             self.check_required_credentials()
             signature = self.hmac(rawSignature, self.secret, hashlib.sha384, 'base64')
@@ -562,11 +566,14 @@ class blockbid (Exchange):
         return {'url': url, 'method': method, 'body': body, 'headers': headers}
 
     def handle_error(self, response):
-        if response.error:
-            return response.error.message
-        if response.message:
-            return response.message
-        return None
+        try:
+            if response['error']:
+                return response['error']['message']
+            if response['message']:
+                return response['message']
+            return None
+        except Exception as error:
+            return None
 
     def nonce(self):
         return self.milliseconds()

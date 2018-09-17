@@ -114,7 +114,10 @@ class blockbid extends Exchange {
             $base = $this->common_currency_code($baseId);
             $quote = $this->common_currency_code($quoteId);
             $symbol = $base . '/' . $quote;
-            $precision = null;
+            $precision = array (
+                'amount' => 8,
+                'price' => null,
+            );
             $active = $this->safe_value($market, 'is_active', true);
             $result[] = array (
                 'id' => $id,
@@ -197,7 +200,7 @@ class blockbid extends Exchange {
         $marketId = $this->market_id($symbol);
         for ($i = 0; $i < count ($tickers); $i++) {
             $ticker = $tickers[$i];
-            if ($ticker->market === $marketId) {
+            if ($ticker['market'] === $marketId) {
                 return $this->parse_ticker($ticker);
             }
         }
@@ -611,7 +614,8 @@ class blockbid extends Exchange {
         $query = $this->omit ($params, $this->extract_params($path));
         $headers = array ();
         if ($api === 'private') {
-            $nonce = $this->safe_string($this->nonce ());
+            $nonce = $this->nonce ();
+            $nonce = (string) $nonce;
             $rawSignature = base64_encode ($this->apiKey) . base64_encode ($nonce);
             $this->check_required_credentials();
             $signature = $this->hmac ($rawSignature, $this->secret, 'sha384', 'base64');
@@ -632,13 +636,17 @@ class blockbid extends Exchange {
     }
 
     public function handle_error ($response) {
-        if ($response->error) {
-            return $response->error.message;
+        try {
+            if ($response['error']) {
+                return $response['error']['message'];
+            }
+            if ($response['message']) {
+                return $response['message'];
+            }
+            return null;
+        } catch (Exception $error) {
+            return null;
         }
-        if ($response->message) {
-            return $response->message;
-        }
-        return null;
     }
 
     public function nonce () {
