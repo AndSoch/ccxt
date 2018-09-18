@@ -48,7 +48,7 @@ class blockbid (Exchange):
                 '1w': 10080,
             },
             'urls': {
-                'api': 'https://api.dev.blockbid.io',
+                'api': 'http://api.local.blockbid.io',
                 'www': 'https://devblockbid.io',
                 'doc': 'https://doc.devblockbid.io',
             },
@@ -333,7 +333,7 @@ class blockbid (Exchange):
     def parse_order(self, order, market=None):
         symbol = None
         if market is None:
-            marketId = self.safe_string_2(order, 'market')
+            marketId = self.safe_string(order, 'market')
             market = self.safe_value(self.markets_by_id, marketId)
         if market is not None:
             symbol = market['symbol']
@@ -410,17 +410,21 @@ class blockbid (Exchange):
                 'id': id,
             }, params)
         )
-        if response.error or response.message:
-            raise PermissionDenied(self.id + ' cancelOrder() requires a valid api key')
+        err = self.handle_error(response)
+        if err:
+            raise ExchangeError(self.id + ' has thrown an error: ' + err)
         return self.parse_order(
             self.extend(response, {'id': id})
         )
 
-    async def cancel_orders(self, side, params={}):
+    async def cancel_orders(self, side=None, params={}):
         if not self.apiKey or not self.secret:
             raise PermissionDenied(self.id + ' cancelOrders() requires you to have a valid api key and secret.')
+        req = {}
+        if side is not None:
+            req['side'] = side
         response = await self.privateDeleteOrders(
-            self.extend({'side': side}, params)
+            self.extend(req, params)
         )
         err = self.handle_error(response)
         if err:
@@ -485,7 +489,11 @@ class blockbid (Exchange):
         if limit is not None:
             request['limit'] = limit
         currencyCode = currency['code']
-        if self.supportedFiat.find(currencyCode) != -1:
+        isFiat = False
+        for i in range(0, len(self.supportedFiat)):
+            if currencyCode == self.supportedFiat[i]:
+                isFiat = True
+        if isFiat:
             response = await self.privateGetWithdrawsFiat(
                 self.extend(request, params)
             )
@@ -501,23 +509,6 @@ class blockbid (Exchange):
             if err:
                 raise ExchangeError(self.id + ' has thrown an error: ' + err)
             return self.parseTransactions(response, currency)
-
-    def parse_transaction_status(self, status):
-        statuses = {
-            'tx_pending_two_factor_auth': 'pending',
-            'tx_pending_email_auth': 'pending',
-            'tx_pending_approval': 'pending',
-            'tx_approved': 'pending',
-            'tx_processing': 'pending',
-            'tx_pending': 'pending',
-            'tx_sent': 'pending',
-            'tx_cancelled': 'canceled',
-            'tx_timeout': 'error',
-            'tx_invalid': 'error',
-            'tx_rejected': 'error',
-            'tx_confirmed': 'ok',
-        }
-        return status in statuses[status] if statuses else status.lower()
 
     def parse_transaction(self, transaction, currency=None):
         datetime = self.safe_string(transaction, 'timeCreated')
@@ -540,7 +531,7 @@ class blockbid (Exchange):
             'type': None,  # direction of the transaction,('deposit' | 'withdraw')
             'amount': self.safe_float(transaction, 'amount'),
             'currency': code,
-            'status': self.parse_transaction_status(transaction['state']),
+            'status': transaction['state'],
             'updated': self.safe_string(transaction, 'timeUpdated'),
             'fee': {
                 'cost': self.safe_float(transaction, 'fee'),
@@ -569,7 +560,7 @@ class blockbid (Exchange):
             if len(query):
                 url += '?' + query
         else:
-            headers['Content-type'] = 'application/json charset=UTF-8'
+            headers['Content-type'] = 'application/json'
             body = self.json(query)
         return {'url': url, 'method': method, 'body': body, 'headers': headers}
 

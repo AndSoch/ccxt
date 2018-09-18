@@ -45,7 +45,7 @@ class blockbid extends Exchange {
                 '1w' => 10080,
             ),
             'urls' => array (
-                'api' => 'https://api.dev.blockbid.io',
+                'api' => 'http://api.local.blockbid.io',
                 'www' => 'https://devblockbid.io',
                 'doc' => 'https://doc.devblockbid.io',
             ),
@@ -364,7 +364,7 @@ class blockbid extends Exchange {
     public function parse_order ($order, $market = null) {
         $symbol = null;
         if ($market === null) {
-            $marketId = $this->safe_string_2($order, 'market');
+            $marketId = $this->safe_string($order, 'market');
             $market = $this->safe_value($this->markets_by_id, $marketId);
         }
         if ($market !== null) {
@@ -452,20 +452,25 @@ class blockbid extends Exchange {
                 'id' => $id,
             ), $params)
         );
-        if ($response->error || $response->message) {
-            throw new PermissionDenied ($this->id . ' cancelOrder() requires a valid api key');
+        $err = $this->handle_error ($response);
+        if ($err) {
+            throw new ExchangeError ($this->id . ' has thrown an error => ' . $err)
         }
         return $this->parse_order(
             array_merge ($response, array ( 'id' => $id ))
         );
     }
 
-    public function cancel_orders ($side, $params = array ()) {
+    public function cancel_orders ($side = null, $params = array ()) {
         if (!$this->apiKey || !$this->secret) {
             throw new PermissionDenied ($this->id . ' cancelOrders() requires you to have a valid api key and secret.');
         }
+        $req = array ()
+        if ($side !== null) {
+            $req['side'] = $side;
+        }
         $response = $this->privateDeleteOrders (
-            array_merge (array ( 'side' => $side ), $params)
+            array_merge ($req, $params)
         );
         $err = $this->handle_error ($response);
         if ($err) {
@@ -546,7 +551,13 @@ class blockbid extends Exchange {
             $request['limit'] = $limit;
         }
         $currencyCode = $currency['code'];
-        if (mb_strpos ($this->supportedFiat, $currencyCode) !== -1) {
+        $isFiat = false;
+        for ($i = 0; $i < count ($this->supportedFiat); $i++ ) {
+            if ($currencyCode === $this->supportedFiat[$i]) {
+                $isFiat = true;
+            }
+        }
+        if ($isFiat) {
             $response = $this->privateGetWithdrawsFiat (
                 array_merge ($request, $params)
             );
@@ -565,24 +576,6 @@ class blockbid extends Exchange {
             }
             return $this->parseTransactions ($response, $currency);
         }
-    }
-
-    public function parse_transaction_status ($status) {
-        $statuses = array (
-            'tx_pending_two_factor_auth' => 'pending',
-            'tx_pending_email_auth' => 'pending',
-            'tx_pending_approval' => 'pending',
-            'tx_approved' => 'pending',
-            'tx_processing' => 'pending',
-            'tx_pending' => 'pending',
-            'tx_sent' => 'pending',
-            'tx_cancelled' => 'canceled',
-            'tx_timeout' => 'error',
-            'tx_invalid' => 'error',
-            'tx_rejected' => 'error',
-            'tx_confirmed' => 'ok',
-        );
-        return $status in $statuses ? $statuses[$status] : strtolower ($status);
     }
 
     public function parse_transaction ($transaction, $currency = null) {
@@ -609,7 +602,7 @@ class blockbid extends Exchange {
             'type' => null, // direction of the $transaction, ('deposit' | 'withdraw')
             'amount' => $this->safe_float($transaction, 'amount'),
             'currency' => $code,
-            'status' => $this->parse_transaction_status ($transaction['state']),
+            'status' => $transaction['state'],
             'updated' => $this->safe_string($transaction, 'timeUpdated'),
             'fee' => array (
                 'cost' => $this->safe_float($transaction, 'fee'),
@@ -641,7 +634,7 @@ class blockbid extends Exchange {
                 $url .= '?' . $query;
             }
         } else {
-            $headers['Content-type'] = 'application/json; charset=UTF-8';
+            $headers['Content-type'] = 'application/json';
             $body = $this->json ($query);
         }
         return array ( 'url' => $url, 'method' => $method, 'body' => $body, 'headers' => $headers );

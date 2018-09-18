@@ -15862,7 +15862,7 @@ module.exports = class blockbid extends Exchange {
                 '1w': 10080,
             },
             'urls': {
-                'api': 'https://api.dev.blockbid.io',
+                'api': 'http://api.local.blockbid.io',
                 'www': 'https://devblockbid.io',
                 'doc': 'https://doc.devblockbid.io',
             },
@@ -16181,7 +16181,7 @@ module.exports = class blockbid extends Exchange {
     parseOrder (order, market = undefined) {
         let symbol = undefined;
         if (typeof market === 'undefined') {
-            let marketId = this.safeString2 (order, 'market');
+            let marketId = this.safeString (order, 'market');
             market = this.safeValue (this.markets_by_id, marketId);
         }
         if (typeof market !== 'undefined') {
@@ -16269,20 +16269,25 @@ module.exports = class blockbid extends Exchange {
                 'id': id,
             }, params)
         );
-        if (response.error || response.message) {
-            throw new PermissionDenied (this.id + ' cancelOrder() requires a valid api key');
+        let err = this.handleError (response);
+        if (err) {
+            throw new ExchangeError (this.id + ' has thrown an error: ' + err)
         }
         return this.parseOrder (
             this.extend (response, { 'id': id })
         );
     }
 
-    async cancelOrders (side, params = {}) {
+    async cancelOrders (side = undefined, params = {}) {
         if (!this.apiKey || !this.secret) {
             throw new PermissionDenied (this.id + ' cancelOrders() requires you to have a valid api key and secret.');
         }
+        let req = {}
+        if (typeof side !== 'undefined') {
+            req['side'] = side;
+        }
         let response = await this.privateDeleteOrders (
-            this.extend ({ 'side': side }, params)
+            this.extend (req, params)
         );
         let err = this.handleError (response);
         if (err) {
@@ -16362,8 +16367,14 @@ module.exports = class blockbid extends Exchange {
         if (typeof limit !== 'undefined') {
             request['limit'] = limit;
         }
-        const currencyCode = currency['code'];
-        if (this.supportedFiat.indexOf (currencyCode) !== -1) {
+        let currencyCode = currency['code'];
+        let isFiat = false;
+        for (let i = 0; i < this.supportedFiat.length; i++ ) {
+            if (currencyCode === this.supportedFiat[i]) {
+                isFiat = true;
+            }
+        }
+        if (isFiat) {
             let response = await this.privateGetWithdrawsFiat (
                 this.extend (request, params)
             );
@@ -16382,24 +16393,6 @@ module.exports = class blockbid extends Exchange {
             }
             return this.parseTransactions (response, currency);
         }
-    }
-
-    parseTransactionStatus (status) {
-        let statuses = {
-            'tx_pending_two_factor_auth': 'pending',
-            'tx_pending_email_auth': 'pending',
-            'tx_pending_approval': 'pending',
-            'tx_approved': 'pending',
-            'tx_processing': 'pending',
-            'tx_pending': 'pending',
-            'tx_sent': 'pending',
-            'tx_cancelled': 'canceled',
-            'tx_timeout': 'error',
-            'tx_invalid': 'error',
-            'tx_rejected': 'error',
-            'tx_confirmed': 'ok',
-        };
-        return status in statuses ? statuses[status] : status.toLowerCase ();
     }
 
     parseTransaction (transaction, currency = undefined) {
@@ -16426,7 +16419,7 @@ module.exports = class blockbid extends Exchange {
             'type': undefined, // direction of the transaction, ('deposit' | 'withdraw')
             'amount': this.safeFloat (transaction, 'amount'),
             'currency': code,
-            'status': this.parseTransactionStatus (transaction['state']),
+            'status': transaction['state'],
             'updated': this.safeString (transaction, 'timeUpdated'),
             'fee': {
                 'cost': this.safeFloat (transaction, 'fee'),
@@ -16458,7 +16451,7 @@ module.exports = class blockbid extends Exchange {
                 url += '?' + query;
             }
         } else {
-            headers['Content-type'] = 'application/json; charset=UTF-8';
+            headers['Content-type'] = 'application/json';
             body = this.json (query);
         }
         return { 'url': url, 'method': method, 'body': body, 'headers': headers };
