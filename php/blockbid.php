@@ -233,11 +233,11 @@ class blockbid extends Exchange {
         $preParseBook = array ();
         $arrBids = array ();
         $arrAsks = array ();
-        for ($i = 0; $i < count ($response->bids); $i++) {
-            $arrBids[] = [$response->bids[$i].price, $response->bids[$i].volume, array ()];
+        for ($i = 0; $i < count ($response['bids']); $i++) {
+            $arrBids[] = [$response['bids'][$i]['price'], $response['bids'][$i]['volume'], array ()];
         }
-        for ($i = 0; $i < count ($response->asks); $i++) {
-            $arrAsks[] = [$response->asks[$i].price, $response->asks[$i].volume, array ()];
+        for ($i = 0; $i < count ($response['asks']); $i++) {
+            $arrAsks[] = [$response['asks'][$i]['price'], $response['asks'][$i]['volume'], array ()];
         }
         $preParseBook['bids'] = $arrBids;
         $preParseBook['asks'] = $arrAsks;
@@ -416,20 +416,23 @@ class blockbid extends Exchange {
         }
         $this->load_markets();
         $market = $this->market ($symbol);
-        $request = array (
+        $method = 'privatePostOrders'
+        $order = array (
             'market' => $market['id'],
             'orders' => array (
                 array (
                     'side' => $side,
                     'volume' => $amount,
-                    'ord_type' => $type,
                 ),
             ),
         );
-        if ($type !== 'market') {
-            $request['orders'][0]['price'] = $price;
+        if ($type !== null) {
+            $order['orders'][0]['orderType'] = $type;
         }
-        $response = $this->privatePostOrders (array_merge ($request, $params));
+        if ($price !== null) {
+            $order['orders'][0]['price'] = $price;
+        }
+        $response = $this->$method (array_merge ($order, $params));
         $err = $this->handle_error ($response);
         if ($err) {
             throw new ExchangeError ($this->id . ' has thrown an error => ' . $err)
@@ -494,8 +497,10 @@ class blockbid extends Exchange {
         $market = $this->market ($symbol);
         $request = array (
             'market' => $market['id'],
-            'limit' => $limit,
         );
+        if ($limit !== null) {
+            $request['limit'] = $limit;
+        }
         $result = $this->privateGetOrders (array_merge ($request, $params));
         $err = $this->handle_error ($result);
         if ($err) {
@@ -513,8 +518,10 @@ class blockbid extends Exchange {
         $market = $this->market ($symbol);
         $request = array (
             'market' => $market['id'],
-            'limit' => $limit,
         );
+        if ($limit !== null) {
+            $request['limit'] = $limit;
+        }
         $response = $this->privateGetTradesMy (array_merge ($request, $params));
         $err = $this->handle_error ($response);
         if ($err) {
@@ -534,8 +541,10 @@ class blockbid extends Exchange {
         $currency = $this->currency ($code);
         $request = array (
             'currency' => $currency['id'],
-            'limit' => $limit,
         );
+        if ($limit !== null) {
+            $request['limit'] = $limit;
+        }
         $currencyCode = $currency['code'];
         if (mb_strpos ($this->supportedFiat, $currencyCode) !== -1) {
             $response = $this->privateGetWithdrawsFiat (
@@ -614,11 +623,14 @@ class blockbid extends Exchange {
         $query = $this->omit ($params, $this->extract_params($path));
         $headers = array ();
         if ($api === 'private') {
+            $this->check_required_credentials();
             $nonce = $this->nonce ();
             $nonce = (string) $nonce;
-            $rawSignature = base64_encode ($this->apiKey) . base64_encode ($nonce);
-            $this->check_required_credentials();
-            $signature = $this->hmac ($rawSignature, $this->secret, 'sha384', 'base64');
+            $encodedApiKey = $this->encode ($this->apiKey);
+            $encodedNonce = $this->encode ($nonce);
+            $rawSignature = base64_encode ($encodedApiKey) . base64_encode ($encodedNonce);
+            $encodedSecret = $this->encode ($this->secret);
+            $signature = $this->hmac ($rawSignature, $encodedSecret, 'sha384', 'base64');
             $headers['X-Blockbid-Signature'] = $signature;
             $headers['X-Blockbid-Nonce'] = $nonce;
             $headers['X-Blockbid-Api-Key'] = $this->apiKey;

@@ -236,11 +236,11 @@ module.exports = class blockbid extends Exchange {
         let preParseBook = {};
         let arrBids = [];
         let arrAsks = [];
-        for (let i = 0; i < response.bids.length; i++) {
-            arrBids.push ([response.bids[i].price, response.bids[i].volume, []]);
+        for (let i = 0; i < response['bids'].length; i++) {
+            arrBids.push ([response['bids'][i]['price'], response['bids'][i]['volume'], []]);
         }
-        for (let i = 0; i < response.asks.length; i++) {
-            arrAsks.push ([response.asks[i].price, response.asks[i].volume, []]);
+        for (let i = 0; i < response['asks'].length; i++) {
+            arrAsks.push ([response['asks'][i]['price'], response['asks'][i]['volume'], []]);
         }
         preParseBook['bids'] = arrBids;
         preParseBook['asks'] = arrAsks;
@@ -419,25 +419,28 @@ module.exports = class blockbid extends Exchange {
         }
         await this.loadMarkets ();
         let market = this.market (symbol);
-        let request = {
+        let method = 'privatePostOrders'
+        let order = {
             'market': market['id'],
             'orders': [
                 {
                     'side': side,
                     'volume': amount,
-                    'ord_type': type,
                 },
             ],
         };
-        if (type !== 'market') {
-            request['orders'][0]['price'] = price;
+        if (typeof type !== 'undefined') {
+            order['orders'][0]['orderType'] = type;
         }
-        let response = await this.privatePostOrders (this.extend (request, params));
+        if (typeof price !== 'undefined') {
+            order['orders'][0]['price'] = price;
+        }
+        let response = await this[method] (this.extend (order, params));
         let err = this.handleError (response);
         if (err) {
             throw new ExchangeError (this.id + ' has thrown an error: ' + err)
         }
-        let order = this.parseOrder (response[0], market);
+        order = this.parseOrder (response[0], market);
         let id = order['id'];
         this.orders[id] = order;
         return order;
@@ -497,8 +500,10 @@ module.exports = class blockbid extends Exchange {
         let market = this.market (symbol);
         let request = {
             'market': market['id'],
-            'limit': limit,
         };
+        if (typeof limit !== 'undefined') {
+            request['limit'] = limit;
+        }
         let result = await this.privateGetOrders (this.extend (request, params));
         let err = this.handleError (result);
         if (err) {
@@ -516,8 +521,10 @@ module.exports = class blockbid extends Exchange {
         let market = this.market (symbol);
         let request = {
             'market': market['id'],
-            'limit': limit,
         };
+        if (typeof limit !== 'undefined') {
+            request['limit'] = limit;
+        }
         let response = await this.privateGetTradesMy (this.extend (request, params));
         let err = this.handleError (response);
         if (err) {
@@ -537,8 +544,10 @@ module.exports = class blockbid extends Exchange {
         let currency = this.currency (code);
         let request = {
             'currency': currency['id'],
-            'limit': limit,
         };
+        if (typeof limit !== 'undefined') {
+            request['limit'] = limit;
+        }
         const currencyCode = currency['code'];
         if (this.supportedFiat.indexOf (currencyCode) !== -1) {
             let response = await this.privateGetWithdrawsFiat (
@@ -617,11 +626,14 @@ module.exports = class blockbid extends Exchange {
         let query = this.omit (params, this.extractParams (path));
         headers = {};
         if (api === 'private') {
+            this.checkRequiredCredentials ();
             let nonce = this.nonce ();
             nonce = nonce.toString ();
-            let rawSignature = this.stringToBase64 (this.apiKey) + this.stringToBase64 (nonce);
-            this.checkRequiredCredentials ();
-            const signature = this.hmac (rawSignature, this.secret, 'sha384', 'base64');
+            let encodedApiKey = this.encode (this.apiKey);
+            let encodedNonce = this.encode (nonce);
+            let rawSignature = this.stringToBase64 (encodedApiKey) + this.stringToBase64 (encodedNonce);
+            let encodedSecret = this.encode (this.secret);
+            const signature = this.hmac (rawSignature, encodedSecret, 'sha384', 'base64');
             headers['X-Blockbid-Signature'] = signature;
             headers['X-Blockbid-Nonce'] = nonce;
             headers['X-Blockbid-Api-Key'] = this.apiKey;

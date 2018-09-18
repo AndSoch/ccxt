@@ -220,10 +220,10 @@ class blockbid (Exchange):
         preParseBook = {}
         arrBids = []
         arrAsks = []
-        for i in range(0, len(response.bids)):
-            arrBids.append([response.bids[i].price, response.bids[i].volume, []])
-        for i in range(0, len(response.asks)):
-            arrAsks.append([response.asks[i].price, response.asks[i].volume, []])
+        for i in range(0, len(response['bids'])):
+            arrBids.append([response['bids'][i]['price'], response['bids'][i]['volume'], []])
+        for i in range(0, len(response['asks'])):
+            arrAsks.append([response['asks'][i]['price'], response['asks'][i]['volume'], []])
         preParseBook['bids'] = arrBids
         preParseBook['asks'] = arrAsks
         return self.parse_order_book(preParseBook, None, 'bids', 'asks', 0, 1)
@@ -379,19 +379,21 @@ class blockbid (Exchange):
             raise PermissionDenied(self.id + ' createOrder() requires you to have a valid api key and secret.')
         await self.load_markets()
         market = self.market(symbol)
-        request = {
+        method = 'privatePostOrders'
+        order = {
             'market': market['id'],
             'orders': [
                 {
                     'side': side,
                     'volume': amount,
-                    'ord_type': type,
                 },
             ],
         }
-        if type != 'market':
-            request['orders'][0]['price'] = price
-        response = await self.privatePostOrders(self.extend(request, params))
+        if type is not None:
+            order['orders'][0]['orderType'] = type
+        if price is not None:
+            order['orders'][0]['price'] = price
+        response = await getattr(self, method)(self.extend(order, params))
         err = self.handle_error(response)
         if err:
             raise ExchangeError(self.id + ' has thrown an error: ' + err)
@@ -444,8 +446,9 @@ class blockbid (Exchange):
         market = self.market(symbol)
         request = {
             'market': market['id'],
-            'limit': limit,
         }
+        if limit is not None:
+            request['limit'] = limit
         result = await self.privateGetOrders(self.extend(request, params))
         err = self.handle_error(result)
         if err:
@@ -460,8 +463,9 @@ class blockbid (Exchange):
         market = self.market(symbol)
         request = {
             'market': market['id'],
-            'limit': limit,
         }
+        if limit is not None:
+            request['limit'] = limit
         response = await self.privateGetTradesMy(self.extend(request, params))
         err = self.handle_error(response)
         if err:
@@ -477,8 +481,9 @@ class blockbid (Exchange):
         currency = self.currency(code)
         request = {
             'currency': currency['id'],
-            'limit': limit,
         }
+        if limit is not None:
+            request['limit'] = limit
         currencyCode = currency['code']
         if self.supportedFiat.find(currencyCode) != -1:
             response = await self.privateGetWithdrawsFiat(
@@ -548,11 +553,14 @@ class blockbid (Exchange):
         query = self.omit(params, self.extract_params(path))
         headers = {}
         if api == 'private':
+            self.check_required_credentials()
             nonce = self.nonce()
             nonce = str(nonce)
-            rawSignature = base64.b64encode(self.apiKey) + base64.b64encode(nonce)
-            self.check_required_credentials()
-            signature = self.hmac(rawSignature, self.secret, hashlib.sha384, 'base64')
+            encodedApiKey = self.encode(self.apiKey)
+            encodedNonce = self.encode(nonce)
+            rawSignature = base64.b64encode(encodedApiKey) + base64.b64encode(encodedNonce)
+            encodedSecret = self.encode(self.secret)
+            signature = self.hmac(rawSignature, encodedSecret, hashlib.sha384, 'base64')
             headers['X-Blockbid-Signature'] = signature
             headers['X-Blockbid-Nonce'] = nonce
             headers['X-Blockbid-Api-Key'] = self.apiKey
