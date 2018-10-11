@@ -48,9 +48,12 @@ module.exports = class blockbid extends Exchange {
                 '1w': 10080,
             },
             'urls': {
-                'api': 'http://api.local.blockbid.io',
-                'www': 'https://devblockbid.io',
-                'doc': 'https://doc.devblockbid.io',
+                'api': 'https://api.test.blockbid.io',
+                'www': 'https://platform.test.blockbid.io',
+                'doc': 'https://doc.test.blockbid.io',
+                // 'api': 'https://api.blockbid.io',
+                // 'www': 'https://platform.blockbid.io',
+                // 'doc': 'https://doc.blockbid.io',
             },
             'api': {
                 'public': {
@@ -318,10 +321,10 @@ module.exports = class blockbid extends Exchange {
         return this.parseOHLCVs (response, market, timeframe, since, limit);
     }
 
-    async fetchBalance (params = {}) {
+    async fetchBalances (params = {}) {
         await this.loadMarkets ();
         if (!this.apiKey || !this.secret) {
-            throw new PermissionDenied (this.id + ' fetchBalance() requires you to have a valid api key and secret.');
+            throw new PermissionDenied (this.id + ' fetchBalances() requires you to have a valid api key and secret.');
         }
         let response = await this.privateGetBalances (params);
         let err = this.handleError (response);
