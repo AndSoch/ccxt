@@ -2,12 +2,12 @@
 
 1. clone the repo into a folder in your project.
 
-2. import ccxt like: `const ccxt = require('./ccxt-copy');`
+2. import ccxt like: `const ccxt = require('./ccxt');`
 
 3. Instantiate and use blockbid like:
 
 ```
-const ccxt = require('./ccxt-copy');
+const ccxt = require('./ccxt');
 
 (async function() {
   let blockbid = new ccxt.blockbid({
@@ -266,7 +266,7 @@ ccxt has a generic format it wants all its responses to take. There are properti
 
 # CCXT – CryptoCurrency eXchange Trading Library
 
-[![Build Status](https://travis-ci.org/ccxt/ccxt.svg?branch=master)](https://travis-ci.org/ccxt/ccxt) [![npm](https://img.shields.io/npm/v/ccxt.svg)](https://npmjs.com/package/ccxt) [![PyPI](https://img.shields.io/pypi/v/ccxt.svg)](https://pypi.python.org/pypi/ccxt) [![NPM Downloads](https://img.shields.io/npm/dm/ccxt.svg)](https://www.npmjs.com/package/ccxt) [![Gitter](https://badges.gitter.im/ccxt-dev/ccxt.svg)](https://gitter.im/ccxt-dev/ccxt?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge) [![Supported Exchanges](https://img.shields.io/badge/exchanges-131-blue.svg)](https://github.com/ccxt/ccxt/wiki/Exchange-Markets) [![Open Collective](https://opencollective.com/ccxt/backers/badge.svg)](https://opencollective.com/ccxt)
+[![Build Status](https://travis-ci.org/ccxt/ccxt.svg?branch=master)](https://travis-ci.org/ccxt/ccxt) [![npm](https://img.shields.io/npm/v/ccxt.svg)](https://npmjs.com/package/ccxt) [![PyPI](https://img.shields.io/pypi/v/ccxt.svg)](https://pypi.python.org/pypi/ccxt) [![NPM Downloads](https://img.shields.io/npm/dm/ccxt.svg)](https://www.npmjs.com/package/ccxt) [![Gitter](https://badges.gitter.im/ccxt-dev/ccxt.svg)](https://gitter.im/ccxt-dev/ccxt?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge) [![Supported Exchanges](https://img.shields.io/badge/exchanges-132-blue.svg)](https://github.com/ccxt/ccxt/wiki/Exchange-Markets) [![Open Collective](https://opencollective.com/ccxt/backers/badge.svg)](https://opencollective.com/ccxt)
 [![Twitter Follow](https://img.shields.io/twitter/follow/ccxt_official.svg?style=social&label=CCXT)](https://twitter.com/ccxt_official)
 
 A JavaScript / Python / PHP library for cryptocurrency trading and e-commerce with support for many bitcoin/ether/altcoin exchange markets and merchant APIs.
@@ -339,7 +339,7 @@ The ccxt library currently supports the following 132 cryptocurrency exchange ma
 |![bitz](https://user-images.githubusercontent.com/1294454/35862606-4f554f14-0b5d-11e8-957d-35058c504b6f.jpg)               | bitz               | [Bit-Z](https://www.bit-z.com)                                                       |                                                                                                                             | 1     | [API](https://www.bit-z.com/api.html)                                                            | Hong Kong                               |
 |![bl3p](https://user-images.githubusercontent.com/1294454/28501752-60c21b82-6feb-11e7-818b-055ee6d0e754.jpg)               | bl3p               | [BL3P](https://bl3p.eu)                                                              |                                                                                                                             | 1     | [API](https://github.com/BitonicNL/bl3p-api/tree/master/docs)                                    | Netherlands, EU                         |
 |![bleutrade](https://user-images.githubusercontent.com/1294454/30303000-b602dbe6-976d-11e7-956d-36c5049c01e7.jpg)          | bleutrade          | [Bleutrade](https://bleutrade.com)                                                   |                                                                                                                             | 2     | [API](https://bleutrade.com/help/API)                                                            | Brazil                                  |
-|![blockbid](undefined)                                                                                                     | blockbid           | [Blockbid](https://devblockbid.io)                                                   |                                                                                                                             | *     | [API](https://doc.devblockbid.io)                                                                | AUS                                     |
+|![blockbid](undefined)                                                                                                     | blockbid           | [Blockbid](https://platform.blockbid.io)                                             |                                                                                                                             | *     | [API](https://docs.blockbid.io)                                                                  | AUS                                     |
 |![braziliex](https://user-images.githubusercontent.com/1294454/34703593-c4498674-f504-11e7-8d14-ff8e44fb78c1.jpg)          | braziliex          | [Braziliex](https://braziliex.com/)                                                  |                                                                                                                             | *     | [API](https://braziliex.com/exchange/api.php)                                                    | Brazil                                  |
 |![btcalpha](https://user-images.githubusercontent.com/1294454/42625213-dabaa5da-85cf-11e8-8f99-aa8f8f7699f0.jpg)           | btcalpha           | [BTC-Alpha](https://btc-alpha.com/?r=123788)                                         |                                                                                                                             | 1     | [API](https://btc-alpha.github.io/api-docs)                                                      | US                                      |
 |![btcbox](https://user-images.githubusercontent.com/1294454/31275803-4df755a8-aaa1-11e7-9abb-11ec2fad9f2d.jpg)             | btcbox             | [BtcBox](https://www.btcbox.co.jp/)                                                  |                                                                                                                             | 1     | [API](https://www.btcbox.co.jp/help/asm)                                                         | Japan                                   |

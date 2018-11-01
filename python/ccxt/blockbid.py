@@ -48,13 +48,13 @@ class blockbid (Exchange):
                 '1w': 10080,
             },
             'urls': {
-                'api': 'http://api.local.blockbid.io',
-                'www': 'https://devblockbid.io',
-                'doc': 'https://doc.devblockbid.io',
+                'api': 'https://api.blockbid.io',
+                'www': 'https://platform.blockbid.io',
+                'doc': 'https://docs.blockbid.io',
             },
             'api': {
                 'public': {
-                    'get': ['markets', 'tickers', 'ohlc', 'orderbook', 'trades']
+                    'get': ['markets', 'tickers', 'ohlc', 'orderbook', 'trades'],
                 },
                 'private': {
                     'get': [
@@ -183,7 +183,8 @@ class blockbid (Exchange):
             'average': None,
             'baseVolume': self.safe_float(ticker, '24h_volume'),
             'quoteVolume': self.safe_float(ticker, 'quote_volume'),
-            'info': ticker}
+            'info': ticker,
+        }
 
     def fetch_ticker(self, symbol=None, params={}):
         self.load_markets()
@@ -208,7 +209,7 @@ class blockbid (Exchange):
     def fetch_order_book(self, symbol, limit=None, params={}):
         self.load_markets()
         request = {
-            'market': self.market_id(symbol)
+            'market': self.market_id(symbol),
         }
         if limit is not None:
             request['asks_limit'] = limit
@@ -249,17 +250,16 @@ class blockbid (Exchange):
             'price': price,
             'amount': amount,
             'cost': cost,
-            'fee': None}
+            'fee': None,
+        }
 
     def fetch_trades(self, symbol, since=None, limit=50, params={}):
         self.load_markets()
         market = self.market(symbol)
-        response = self.publicGetTrades(
-            self.extend({
-                'market': market['id'],
-                'limit': limit,
-            }, params)
-        )
+        response = self.publicGetTrades(self.extend({
+            'market': market['id'],
+            'limit': limit,
+        }, params))
         err = self.handle_error(response)
         if err:
             raise ExchangeError(self.id + ' has thrown an error: ' + err)
@@ -291,10 +291,10 @@ class blockbid (Exchange):
             raise ExchangeError(self.id + ' has thrown an error: ' + err)
         return self.parse_ohlcvs(response, market, timeframe, since, limit)
 
-    def fetch_balance(self, params={}):
+    def fetch_balances(self, params={}):
         self.load_markets()
         if not self.apiKey or not self.secret:
-            raise PermissionDenied(self.id + ' fetchBalance() requires you to have a valid api key and secret.')
+            raise PermissionDenied(self.id + ' fetchBalances() requires you to have a valid api key and secret.')
         response = self.privateGetBalances(params)
         err = self.handle_error(response)
         if err:
@@ -372,7 +372,8 @@ class blockbid (Exchange):
             'trades': self.safe_string(order, 'tradesCount'),
             'remaining': remaining,
             'fee': None,
-            'info': order}
+            'info': order,
+        }
 
     def create_order(self, symbol, type, side, amount, price=None, params={}):
         if not self.apiKey or not self.secret:
@@ -402,20 +403,16 @@ class blockbid (Exchange):
         self.orders[id] = order
         return order
 
-    def cancel_order(self, id, params={}):
+    def cancel_order(self, id, symbol=None, params={}):
         if not self.apiKey or not self.secret:
             raise PermissionDenied(self.id + ' cancelOrder() requires you to have a valid api key and secret.')
-        response = self.privateDeleteOrdersId(
-            self.extend({
-                'id': id,
-            }, params)
-        )
+        response = self.privateDeleteOrdersId(self.extend({
+            'id': id,
+        }, params))
         err = self.handle_error(response)
         if err:
             raise ExchangeError(self.id + ' has thrown an error: ' + err)
-        return self.parse_order(
-            self.extend(response, {'id': id})
-        )
+        return self.parse_order(self.extend(response, {'id': id}))
 
     def cancel_orders(self, side=None, params={}):
         if not self.apiKey or not self.secret:
@@ -423,9 +420,7 @@ class blockbid (Exchange):
         req = {}
         if side is not None:
             req['side'] = side
-        response = self.privateDeleteOrders(
-            self.extend(req, params)
-        )
+        response = self.privateDeleteOrders(self.extend(req, params))
         err = self.handle_error(response)
         if err:
             raise ExchangeError(self.id + ' has thrown an error: ' + err)
@@ -435,9 +430,7 @@ class blockbid (Exchange):
         if not self.apiKey or not self.secret:
             raise PermissionDenied(self.id + ' fetchOrder() requires you to have a valid api key and secret.')
         self.load_markets()
-        response = self.privateGetOrdersId(
-            self.extend({'id': str(id)}, params)
-        )
+        response = self.privateGetOrdersId(self.extend({'id': str(id)}, params))
         err = self.handle_error(response)
         if err:
             raise ExchangeError(self.id + ' has thrown an error: ' + err)
@@ -494,17 +487,13 @@ class blockbid (Exchange):
             if currencyCode == self.supportedFiat[i]:
                 isFiat = True
         if isFiat:
-            response = self.privateGetWithdrawsFiat(
-                self.extend(request, params)
-            )
+            response = self.privateGetWithdrawsFiat(self.extend(request, params))
             err = self.handle_error(response)
             if err:
                 raise ExchangeError(self.id + ' has thrown an error: ' + err)
             return self.parseTransactions(response, currency)
         else:
-            response = self.privateGetWithdrawsCrypto(
-                self.extend(request, params)
-            )
+            response = self.privateGetWithdrawsCrypto(self.extend(request, params))
             err = self.handle_error(response)
             if err:
                 raise ExchangeError(self.id + ' has thrown an error: ' + err)

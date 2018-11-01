@@ -45,13 +45,13 @@ class blockbid extends Exchange {
                 '1w' => 10080,
             ),
             'urls' => array (
-                'api' => 'http://api.local.blockbid.io',
-                'www' => 'https://devblockbid.io',
-                'doc' => 'https://doc.devblockbid.io',
+                'api' => 'https://api.blockbid.io',
+                'www' => 'https://platform.blockbid.io',
+                'doc' => 'https://docs.blockbid.io',
             ),
             'api' => array (
                 'public' => array (
-                    'get' => ['markets', 'tickers', 'ohlc', 'orderbook', 'trades']
+                    'get' => ['markets', 'tickers', 'ohlc', 'orderbook', 'trades'],
                 ),
                 'private' => array (
                     'get' => array (
@@ -103,7 +103,7 @@ class blockbid extends Exchange {
         $markets = $this->publicGetMarkets ();
         $err = $this->handle_error ($markets);
         if ($err) {
-            throw new ExchangeError ($this->id . ' has thrown an error => ' . $err)
+            throw new ExchangeError ($this->id . ' has thrown an error => ' . $err);
         }
         $result = array ();
         for ($i = 0; $i < count ($markets); $i++) {
@@ -167,7 +167,7 @@ class blockbid extends Exchange {
         $datetime = $this->safe_string($ticker, 'timestamp');
         $timestamp = $this->parse8601 ($datetime);
         $last = $this->safe_float($ticker, 'last');
-        return {
+        return array (
             'symbol' => $symbol,
             'timestamp' => $timestamp,
             'datetime' => $datetime,
@@ -187,7 +187,8 @@ class blockbid extends Exchange {
             'average' => null,
             'baseVolume' => $this->safe_float($ticker, '24h_volume'),
             'quoteVolume' => $this->safe_float($ticker, 'quote_volume'),
-            'info' => $ticker }
+            'info' => $ticker,
+        );
     }
 
     public function fetch_ticker ($symbol = null, $params = array ()) {
@@ -219,7 +220,7 @@ class blockbid extends Exchange {
     public function fetch_order_book ($symbol, $limit = null, $params = array ()) {
         $this->load_markets();
         $request = array (
-            'market' => $this->market_id($symbol)
+            'market' => $this->market_id($symbol),
         );
         if ($limit !== null) {
             $request['asks_limit'] = $limit;
@@ -266,18 +267,17 @@ class blockbid extends Exchange {
             'price' => $price,
             'amount' => $amount,
             'cost' => $cost,
-            'fee' => null );
+            'fee' => null,
+        );
     }
 
     public function fetch_trades ($symbol, $since = null, $limit = 50, $params = array ()) {
         $this->load_markets();
         $market = $this->market ($symbol);
-        $response = $this->publicGetTrades (
-            array_merge (array (
-                'market' => $market['id'],
-                'limit' => $limit,
-            ), $params)
-        );
+        $response = $this->publicGetTrades (array_merge (array (
+            'market' => $market['id'],
+            'limit' => $limit,
+        ), $params));
         $err = $this->handle_error ($response);
         if ($err) {
             throw new ExchangeError ($this->id . ' has thrown an error => ' . $err);
@@ -315,10 +315,10 @@ class blockbid extends Exchange {
         return $this->parse_ohlcvs($response, $market, $timeframe, $since, $limit);
     }
 
-    public function fetch_balance ($params = array ()) {
+    public function fetch_balances ($params = array ()) {
         $this->load_markets();
         if (!$this->apiKey || !$this->secret) {
-            throw new PermissionDenied ($this->id . ' fetchBalance() requires you to have a valid api key and secret.');
+            throw new PermissionDenied ($this->id . ' fetchBalances() requires you to have a valid api key and secret.');
         }
         $response = $this->privateGetBalances ($params);
         $err = $this->handle_error ($response);
@@ -407,7 +407,8 @@ class blockbid extends Exchange {
             'trades' => $this->safe_string($order, 'tradesCount'),
             'remaining' => $remaining,
             'fee' => null,
-            'info' => $order );
+            'info' => $order,
+        );
     }
 
     public function create_order ($symbol, $type, $side, $amount, $price = null, $params = array ()) {
@@ -416,7 +417,7 @@ class blockbid extends Exchange {
         }
         $this->load_markets();
         $market = $this->market ($symbol);
-        $method = 'privatePostOrders'
+        $method = 'privatePostOrders';
         $order = array (
             'market' => $market['id'],
             'orders' => array (
@@ -435,7 +436,7 @@ class blockbid extends Exchange {
         $response = $this->$method (array_merge ($order, $params));
         $err = $this->handle_error ($response);
         if ($err) {
-            throw new ExchangeError ($this->id . ' has thrown an error => ' . $err)
+            throw new ExchangeError ($this->id . ' has thrown an error => ' . $err);
         }
         $order = $this->parse_order($response[0], $market);
         $id = $order['id'];
@@ -443,35 +444,29 @@ class blockbid extends Exchange {
         return $order;
     }
 
-    public function cancel_order ($id, $params = array ()) {
+    public function cancel_order ($id, $symbol = null, $params = array ()) {
         if (!$this->apiKey || !$this->secret) {
             throw new PermissionDenied ($this->id . ' cancelOrder() requires you to have a valid api key and secret.');
         }
-        $response = $this->privateDeleteOrdersId (
-            array_merge (array (
-                'id' => $id,
-            ), $params)
-        );
+        $response = $this->privateDeleteOrdersId (array_merge (array (
+            'id' => $id,
+        ), $params));
         $err = $this->handle_error ($response);
         if ($err) {
-            throw new ExchangeError ($this->id . ' has thrown an error => ' . $err)
+            throw new ExchangeError ($this->id . ' has thrown an error => ' . $err);
         }
-        return $this->parse_order(
-            array_merge ($response, array ( 'id' => $id ))
-        );
+        return $this->parse_order(array_merge ($response, array ( 'id' => $id )));
     }
 
     public function cancel_orders ($side = null, $params = array ()) {
         if (!$this->apiKey || !$this->secret) {
             throw new PermissionDenied ($this->id . ' cancelOrders() requires you to have a valid api key and secret.');
         }
-        $req = array ()
+        $req = array ();
         if ($side !== null) {
             $req['side'] = $side;
         }
-        $response = $this->privateDeleteOrders (
-            array_merge ($req, $params)
-        );
+        $response = $this->privateDeleteOrders (array_merge ($req, $params));
         $err = $this->handle_error ($response);
         if ($err) {
             throw new ExchangeError ($this->id . ' has thrown an error => ' . $err);
@@ -484,9 +479,7 @@ class blockbid extends Exchange {
             throw new PermissionDenied ($this->id . ' fetchOrder() requires you to have a valid api key and secret.');
         }
         $this->load_markets();
-        $response = $this->privateGetOrdersId (
-            array_merge (array ( 'id' => (string) $id ), $params)
-        );
+        $response = $this->privateGetOrdersId (array_merge (array ( 'id' => (string) $id ), $params));
         $err = $this->handle_error ($response);
         if ($err) {
             throw new ExchangeError ($this->id . ' has thrown an error => ' . $err);
@@ -552,24 +545,20 @@ class blockbid extends Exchange {
         }
         $currencyCode = $currency['code'];
         $isFiat = false;
-        for ($i = 0; $i < count ($this->supportedFiat); $i++ ) {
+        for ($i = 0; $i < count ($this->supportedFiat); $i++) {
             if ($currencyCode === $this->supportedFiat[$i]) {
                 $isFiat = true;
             }
         }
         if ($isFiat) {
-            $response = $this->privateGetWithdrawsFiat (
-                array_merge ($request, $params)
-            );
+            $response = $this->privateGetWithdrawsFiat (array_merge ($request, $params));
             $err = $this->handle_error ($response);
             if ($err) {
                 throw new ExchangeError ($this->id . ' has thrown an error => ' . $err);
             }
             return $this->parseTransactions ($response, $currency);
         } else {
-            $response = $this->privateGetWithdrawsCrypto (
-                array_merge ($request, $params)
-            );
+            $response = $this->privateGetWithdrawsCrypto (array_merge ($request, $params));
             $err = $this->handle_error ($response);
             if ($err) {
                 throw new ExchangeError ($this->id . ' has thrown an error => ' . $err);
