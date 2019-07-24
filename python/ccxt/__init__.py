@@ -93,6 +93,7 @@ from ccxt.bittrex import bittrex                            # noqa: F401
 from ccxt.bitz import bitz                                  # noqa: F401
 from ccxt.bl3p import bl3p                                  # noqa: F401
 from ccxt.bleutrade import bleutrade                        # noqa: F401
+from ccxt.blockbid import blockbid                          # noqa: F401
 from ccxt.braziliex import braziliex                        # noqa: F401
 from ccxt.btcalpha import btcalpha                          # noqa: F401
 from ccxt.btcbox import btcbox                              # noqa: F401
@@ -217,6 +218,7 @@ exchanges = [
     'bitz',
     'bl3p',
     'bleutrade',
+    'blockbid',
     'braziliex',
     'btcalpha',
     'btcbox',
