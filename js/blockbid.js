@@ -613,8 +613,9 @@ module.exports = class blockbid extends Exchange {
             const encodedNonce = this.encode (nonce);
             let rawSignature = this.stringToBase64 (encodedApiKey) + this.stringToBase64 (encodedNonce);
             let stringifyedPayload = '';
-            if (body && Object.keys (body).length > 0) {
+            if (body) {
                 stringifyedPayload = this.encode (JSON.stringify (body));
+                stringifyedPayload = stringifyedPayload.replace (' ', '');
             }
             body = JSON.stringify (body);
             rawSignature = rawSignature + this.stringToBase64 (stringifyedPayload);

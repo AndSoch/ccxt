@@ -566,8 +566,9 @@ class blockbid (Exchange):
             encodedNonce = self.encode(nonce)
             rawSignature = base64.b64encode(encodedApiKey) + base64.b64encode(encodedNonce)
             stringifyedPayload = ''
-            if body and body > 0:
+            if body:
                 stringifyedPayload = self.encode(json.dumps(body))
+                stringifyedPayload = stringifyedPayload.replace(' ', '')
             body = json.dumps(body)
             rawSignature = rawSignature + base64.b64encode(stringifyedPayload)
             encodedSecret = self.encode(self.secret)
