@@ -470,7 +470,9 @@
     "digifinex.vip",
     "DigiFinex",
     "idex.market",
-    "IDEX"
+    "IDEX",
+    "platform.blockbid.io",
+    "Blockbid"
   ],
   "collective": {
     "type": "opencollective",
