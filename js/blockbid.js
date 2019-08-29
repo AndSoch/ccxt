@@ -628,14 +628,14 @@ module.exports = class blockbid extends Exchange {
         return { 'url': url, 'method': method, 'body': body, 'headers': headers };
     }
 
-    handleErrors (code, reason, url, method, headers, body, response, request_headers, request_body) {
+    handleErrors (code, reason, url, method, headers, body, response) {
         if (!this.isJsonEncodedObject (body)) {
             return; // fallback to default error handler
         }
         const realResponse = JSON.parse (body);
         const error = this.safeValue (realResponse, 'error');
         if (error !== undefined) {
-            const feedback = this.id + ' ' + body + request_body;
+            const feedback = this.id + ' ' + body;
             const code = this.safeString (error, 'name');
             const exact = this.exceptions['exact'];
             if (code in exact) {
