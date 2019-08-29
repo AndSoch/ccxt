@@ -34,7 +34,7 @@ use kornrunner\Eth;
 use kornrunner\Secp256k1;
 use kornrunner\Solidity;
 
-$version = '1.18.946';
+$version = '1.18.1042';
 
 // rounding mode
 const TRUNCATE = 0;
@@ -51,7 +51,7 @@ const PAD_WITH_ZERO = 1;
 
 class Exchange {
 
-    const VERSION = '1.18.946';
+    const VERSION = '1.18.1042';
 
     public static $eth_units = array (
         'wei'        => '1',
@@ -80,7 +80,7 @@ class Exchange {
         'tether'     => '1000000000000000000000000000000',
     );
 
-    public static $exchanges = array(
+    public static $exchanges = array (
         '_1btcxe',
         'acx',
         'allcoin',
@@ -101,6 +101,7 @@ class Exchange {
         'bithumb',
         'bitkk',
         'bitlish',
+        'bitmart',
         'bitmex',
         'bitso',
         'bitstamp',
@@ -142,6 +143,7 @@ class Exchange {
         'crex24',
         'crypton',
         'deribit',
+        'digifinex',
         'dsx',
         'dx',
         'ethfinex',
@@ -169,8 +171,8 @@ class Exchange {
         'kucoin2',
         'kuna',
         'lakebtc',
+        'latoken',
         'lbank',
-        'liqui',
         'liquid',
         'livecoin',
         'luno',
@@ -221,8 +223,24 @@ class Exchange {
         return (isset($object[$key]) && is_scalar($object[$key])) ? strval($object[$key]) : $default_value;
     }
 
+    public static function safe_string_lower($object, $key, $default_value = null) {
+        return (isset($object[$key]) && is_scalar($object[$key])) ? strtolower(strval($object[$key])) : $default_value;
+    }
+
+    public static function safe_string_upper($object, $key, $default_value = null) {
+        return (isset($object[$key]) && is_scalar($object[$key])) ? strtoupper(strval($object[$key])) : $default_value;
+    }
+
     public static function safe_integer($object, $key, $default_value = null) {
         return (isset($object[$key]) && is_numeric($object[$key])) ? intval($object[$key]) : $default_value;
+    }
+
+    public static function safe_integer_product($object, $key, $factor, $default_value = null) {
+        return (isset($object[$key]) && is_numeric($object[$key])) ? (intval($object[$key]) * $factor) : $default_value;
+    }
+
+    public static function safe_timestamp($object, $key, $default_value = null) {
+        return static::safe_integer_product($object, $key, 1000, $default_value);
     }
 
     public static function safe_value($object, $key, $default_value = null) {
@@ -242,9 +260,28 @@ class Exchange {
         return isset($value) ? $value : static::safe_string($object, $key2, $default_value);
     }
 
+    public static function safe_string_lower_2($object, $key1, $key2, $default_value = null) {
+        $value = static::safe_string_lower($object, $key1);
+        return isset($value) ? $value : static::safe_string_lower($object, $key2, $default_value);
+    }
+
+    public static function safe_string_upper_2($object, $key1, $key2, $default_value = null) {
+        $value = static::safe_string_upper($object, $key1);
+        return isset($value) ? $value : static::safe_string_upper($object, $key2, $default_value);
+    }
+
     public static function safe_integer_2($object, $key1, $key2, $default_value = null) {
         $value = static::safe_integer($object, $key1);
         return isset($value) ? $value : static::safe_integer($object, $key2, $default_value);
+    }
+
+    public static function safe_integer_product_2($object, $key1, $key2, $factor, $default_value = null) {
+        $value = static::safe_integer_product($object, $key1, $factor);
+        return isset($value) ? $value : static::safe_integer_product($object, $key2, $factor, $default_value);
+    }
+
+    public static function safe_timestamp_2($object, $key1, $key2, $default_value = null) {
+        return static::safe_integer_product_2($object, $key1, $key2, 1000, $default_value);
     }
 
     public static function safe_value_2($object, $key1, $key2, $default_value = null) {
@@ -1645,7 +1682,14 @@ class Exchange {
         $array = is_array($items) ? array_values($items) : array();
         $result = array();
         foreach ($array as $item) {
-            $result[] = array_replace_recursive($this->parse_ledger_entry($item, $currency), $params);
+            $entry = $this->parse_ledger_entry($item, $currency);
+            if (gettype ($entry) === 'array' && count (array_filter (array_keys ($entry), 'is_string')) == 0) {
+                foreach ($entry as $i) {
+                    $result[] = array_replace_recursive($i, $params);
+                }
+            } else {
+                $result[] = array_replace_recursive($entry, $params);
+            }
         }
         $result = $this->sort_by($result, 'timestamp');
         $code = isset($currency) ? $currency['code'] : null;
@@ -1776,6 +1820,10 @@ class Exchange {
 
     public function fetchBidsAsks($symbols, $params = array()) {
         return $this->fetch_bids_asks($symbols, $params);
+    }
+
+    public function fetch_ticker($symbol, $params = array()) { // stub
+        throw new NotSupported($this->id . ' fetchTicker not supported yet');
     }
 
     public function fetch_tickers($symbols, $params = array()) { // stub

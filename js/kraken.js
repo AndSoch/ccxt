@@ -695,7 +695,7 @@ module.exports = class kraken extends Exchange {
     }
 
     async fetchLedgerEntry (id, code = undefined, params = {}) {
-        const items = await this.fetchLedgerEntrysByIds ([ id ], code, params);
+        const items = await this.fetchLedgerEntriesByIds ([ id ], code, params);
         return items[0];
     }
 
@@ -723,7 +723,7 @@ module.exports = class kraken extends Exchange {
         if ('ordertxid' in trade) {
             order = trade['ordertxid'];
             id = this.safeString2 (trade, 'id', 'postxid');
-            timestamp = parseInt (trade['time'] * 1000);
+            timestamp = this.safeTimestamp (trade, 'time');
             side = trade['type'];
             type = trade['ordertype'];
             price = this.safeFloat (trade, 'price');
@@ -800,10 +800,7 @@ module.exports = class kraken extends Exchange {
 
     async fetchBalance (params = {}) {
         const response = await this.privatePostBalance (params);
-        const balances = this.safeValue (response, 'result');
-        if (balances === undefined) {
-            throw new ExchangeNotAvailable (this.id + ' fetchBalance failed due to a malformed response ' + this.json (response));
-        }
+        const balances = this.safeValue (response, 'result', {});
         const result = { 'info': balances };
         const currencyIds = Object.keys (balances);
         for (let i = 0; i < currencyIds.length; i++) {
@@ -931,7 +928,7 @@ module.exports = class kraken extends Exchange {
             // delisted market ids go here
             market = this.getDelistedMarketById (marketId);
         }
-        const timestamp = this.safeInteger (order, 'opentm') * 1000;
+        const timestamp = this.safeTimestamp (order, 'opentm');
         const amount = this.safeFloat (order, 'vol');
         const filled = this.safeFloat (order, 'vol_exec');
         const remaining = amount - filled;
@@ -1141,7 +1138,7 @@ module.exports = class kraken extends Exchange {
             'Initial': 'pending',
             'Pending': 'pending',
             'Success': 'ok',
-            'Settled': 'ok',
+            'Settled': 'pending',
             'Failure': 'failed',
             'Partial': 'ok',
         };
@@ -1178,10 +1175,7 @@ module.exports = class kraken extends Exchange {
         //
         const id = this.safeString (transaction, 'refid');
         const txid = this.safeString (transaction, 'txid');
-        let timestamp = this.safeInteger (transaction, 'time');
-        if (timestamp !== undefined) {
-            timestamp = timestamp * 1000;
-        }
+        const timestamp = this.safeTimestamp (transaction, 'time');
         const currencyId = this.safeString (transaction, 'asset');
         const code = this.safeCurrencyCode (currencyId, currency);
         const address = this.safeString (transaction, 'info');

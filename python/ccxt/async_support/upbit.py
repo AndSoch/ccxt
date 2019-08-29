@@ -647,9 +647,7 @@ class upbit (Exchange):
         if timestamp is None:
             timestamp = self.parse8601(self.safe_string(trade, 'created_at'))
         side = None
-        askOrBid = self.safe_string_2(trade, 'ask_bid', 'side')
-        if askOrBid is not None:
-            askOrBid = askOrBid.lower()
+        askOrBid = self.safe_string_lower_2(trade, 'ask_bid', 'side')
         if askOrBid == 'ask':
             side = 'sell'
         elif askOrBid == 'bid':
@@ -771,6 +769,9 @@ class upbit (Exchange):
             numMinutes = int(round(timeframePeriod / 60))
             request['unit'] = numMinutes
             method += 'Unit'
+        if since is not None:
+            # convert `since` to `to` value
+            request['to'] = self.iso8601(self.sum(since, timeframePeriod * limit * 1000))
         response = await getattr(self, method)(self.extend(request, params))
         #
         #     [{                 market: "BTC-ETH",

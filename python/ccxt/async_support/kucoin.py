@@ -1005,10 +1005,18 @@ class kucoin (Exchange):
             request['memo'] = tag
         response = await self.privatePostWithdrawals(self.extend(request, params))
         #
-        # {"withdrawalId": "5bffb63303aa675e8bbe18f9"}
+        # https://github.com/ccxt/ccxt/issues/5558
         #
+        #     {
+        #         "code":  200000,
+        #         "data": {
+        #             "withdrawalId":  "abcdefghijklmnopqrstuvwxyz"
+        #         }
+        #     }
+        #
+        data = self.safe_value(response, 'data', {})
         return {
-            'id': self.safe_string(response, 'withdrawalId'),
+            'id': self.safe_string(data, 'withdrawalId'),
             'info': response,
         }
 
@@ -1387,7 +1395,9 @@ class kucoin (Exchange):
         # the v2 URL is https://openapi-v2.kucoin.com/api/v1/endpoint
         #                                †                 ↑
         #
-        endpoint = '/api/' + self.options['version'] + '/' + self.implode_params(path, params)
+        version = self.safe_string(params, 'version', self.options['version'])
+        params = self.omit(params, 'version')
+        endpoint = '/api/' + version + '/' + self.implode_params(path, params)
         query = self.omit(params, self.extract_params(path))
         endpart = ''
         headers = headers is not headers if None else {}
