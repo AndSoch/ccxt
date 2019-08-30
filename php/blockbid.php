@@ -617,8 +617,8 @@ class blockbid extends Exchange {
             if ($body) {
                 $stringifyedPayload = $this->encode (json_encode ($body));
                 $stringifyedPayload = str_replace(' ', '', $stringifyedPayload);
+                $body = json_encode ($body);
             }
-            $body = json_encode ($body);
             $rawSignature = $rawSignature . base64_encode ($stringifyedPayload);
             $encodedSecret = $this->encode ($this->secret);
             $signature = $this->hmac ($rawSignature, $encodedSecret, 'sha384', 'base64');

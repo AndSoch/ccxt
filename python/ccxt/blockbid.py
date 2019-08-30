@@ -569,7 +569,7 @@ class blockbid (Exchange):
             if body:
                 stringifyedPayload = self.encode(json.dumps(body))
                 stringifyedPayload = stringifyedPayload.replace(' ', '')
-            body = json.dumps(body)
+                body = json.dumps(body)
             rawSignature = rawSignature + base64.b64encode(stringifyedPayload)
             encodedSecret = self.encode(self.secret)
             signature = self.hmac(rawSignature, encodedSecret, hashlib.sha384, 'base64')
