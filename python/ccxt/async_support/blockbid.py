@@ -567,10 +567,10 @@ class blockbid (Exchange):
             rawSignature = base64.b64encode(encodedApiKey) + base64.b64encode(encodedNonce)
             stringifyedPayload = ''
             if body:
-                stringifyedPayload = self.encode(json.dumps(body))
+                stringifyedPayload = json.dumps(body)
                 stringifyedPayload = stringifyedPayload.replace(' ', '')
-                body = json.dumps(body)
-            rawSignature = rawSignature + base64.b64encode(stringifyedPayload)
+                stringifyedPayload = self.encode(stringifyedPayload)
+                rawSignature = rawSignature + base64.b64encode(stringifyedPayload)
             encodedSecret = self.encode(self.secret)
             signature = self.hmac(rawSignature, encodedSecret, hashlib.sha384, 'base64')
             headers['X-Blockbid-Signature'] = signature

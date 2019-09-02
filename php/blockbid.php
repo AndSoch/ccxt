@@ -615,11 +615,11 @@ class blockbid extends Exchange {
             $rawSignature = base64_encode ($encodedApiKey) . base64_encode ($encodedNonce);
             $stringifyedPayload = '';
             if ($body) {
-                $stringifyedPayload = $this->encode (json_encode ($body));
+                $stringifyedPayload = json_encode ($body);
                 $stringifyedPayload = str_replace(' ', '', $stringifyedPayload);
-                $body = json_encode ($body);
+                $stringifyedPayload = $this->encode ($stringifyedPayload);
+                $rawSignature = $rawSignature . base64_encode ($stringifyedPayload);
             }
-            $rawSignature = $rawSignature . base64_encode ($stringifyedPayload);
             $encodedSecret = $this->encode ($this->secret);
             $signature = $this->hmac ($rawSignature, $encodedSecret, 'sha384', 'base64');
             $headers['X-Blockbid-Signature'] = $signature;

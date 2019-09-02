@@ -614,11 +614,11 @@ module.exports = class blockbid extends Exchange {
             let rawSignature = this.stringToBase64 (encodedApiKey) + this.stringToBase64 (encodedNonce);
             let stringifyedPayload = '';
             if (body) {
-                stringifyedPayload = this.encode (JSON.stringify (body));
+                stringifyedPayload = JSON.stringify (body);
                 stringifyedPayload = stringifyedPayload.replace (' ', '');
-                body = JSON.stringify (body);
+                stringifyedPayload = this.encode (stringifyedPayload);
+                rawSignature = rawSignature + this.stringToBase64 (stringifyedPayload);
             }
-            rawSignature = rawSignature + this.stringToBase64 (stringifyedPayload);
             const encodedSecret = this.encode (this.secret);
             const signature = this.hmac (rawSignature, encodedSecret, 'sha384', 'base64');
             headers['X-Blockbid-Signature'] = signature;
