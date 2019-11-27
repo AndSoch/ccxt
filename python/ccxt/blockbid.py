@@ -285,6 +285,7 @@ class blockbid (Exchange):
             'amount': amount,
             'cost': cost,
             'fee': None,
+            'takerOrMaker': None,
         }
 
     def fetch_trades(self, symbol, since=None, limit=50, params={}):
