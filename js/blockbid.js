@@ -293,6 +293,7 @@ module.exports = class blockbid extends Exchange {
             'amount': amount,
             'cost': cost,
             'fee': undefined,
+            'takerOrMaker': undefined,
         };
     }
 
