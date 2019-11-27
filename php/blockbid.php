@@ -329,6 +329,9 @@ class blockbid extends Exchange {
         if ($since !== null) {
             $request['timestamp'] = $since;
         }
+        if ($limit !== null) {
+            $request['limit'] = $limit;
+        }
         $response = $this->publicGetOhlc (array_merge ($request, $params));
         return $this->parse_ohlcvs($response, $market, $timeframe, $since, $limit);
     }
