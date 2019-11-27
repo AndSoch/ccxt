@@ -294,6 +294,7 @@ class blockbid extends Exchange {
             'amount' => $amount,
             'cost' => $cost,
             'fee' => null,
+            'takerOrMaker' => null,
         );
     }
 
