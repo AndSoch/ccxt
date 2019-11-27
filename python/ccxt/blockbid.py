@@ -316,6 +316,8 @@ class blockbid (Exchange):
         }
         if since is not None:
             request['timestamp'] = since
+        if limit is not None:
+            request['limit'] = limit
         response = self.publicGetOhlc(self.extend(request, params))
         return self.parse_ohlcvs(response, market, timeframe, since, limit)
 
