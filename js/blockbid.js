@@ -328,6 +328,9 @@ module.exports = class blockbid extends Exchange {
         if (typeof since !== 'undefined') {
             request['timestamp'] = since;
         }
+        if (typeof limit !== 'undefined') {
+            request['limit'] = limit;
+        }
         const response = await this.publicGetOhlc (this.extend (request, params));
         return this.parseOHLCVs (response, market, timeframe, since, limit);
     }
